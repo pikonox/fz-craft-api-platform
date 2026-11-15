@@ -1,0 +1,22 @@
+# Dependencies and build output
+node_modules
+.next
+dist
+.turbo
+coverage
+*.tsbuildinfo
+
+# Secrets — never commit these (.env.example is the template)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Uploaded and generated files
+storage/
+apps/api/storage
+
+# Logs and OS files
+*.log
+.DS_Store

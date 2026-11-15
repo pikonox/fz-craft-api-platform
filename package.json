@@ -1,0 +1,21 @@
+{
+  "name": "fz-craft",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:api": "pnpm --filter @nova/api dev",
+    "dev:web": "pnpm --filter @nova/web dev",
+    "build": "turbo run build",
+    "start": "turbo run start --parallel",
+    "typecheck": "turbo run typecheck",
+    "test": "pnpm --filter @nova/api test",
+    "seed": "pnpm --filter @nova/api seed",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "5.9.3"
+  }
+}

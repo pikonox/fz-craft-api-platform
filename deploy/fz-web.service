@@ -1,0 +1,16 @@
+[Unit]
+Description=fz-craft website (Next.js)
+After=network-online.target fz-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=/opt/fz-craft/apps/web
+Environment=NODE_ENV=production
+ExecStart=/opt/fz-craft/apps/web/node_modules/.bin/next start -p 3000 -H 127.0.0.1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

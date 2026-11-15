@@ -1,0 +1,228 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Tokens ─────────────────────────────────────────── */
+:root {
+  --background: #f7f7f8;
+  --sidebar: #f2f2f4;
+  --card: #ffffff;
+  --muted: #f1f1f4;
+  --muted-2: #e9e9ee;
+  --elevated: #ffffff;
+  --border: #e4e4ea;
+  --border-strong: #d4d4dc;
+  --foreground: #0b0b10;
+  --muted-foreground: #6b6b78;
+  --subtle-foreground: #9a9aa6;
+  --primary: #0b0b10;
+  --primary-foreground: #ffffff;
+  --accent: #6a5af9;
+  --accent-foreground: #ffffff;
+  --accent-soft: rgb(106 90 249 / 0.1);
+  --success: #059669;
+  --success-soft: rgb(5 150 105 / 0.1);
+  --warning: #d97706;
+  --warning-soft: rgb(217 119 6 / 0.12);
+  --danger: #dc2626;
+  --danger-soft: rgb(220 38 38 / 0.1);
+  --info: #2563eb;
+  --info-soft: rgb(37 99 235 / 0.1);
+  --ring: rgb(106 90 249 / 0.45);
+
+  /* Chart series (validated for both themes) */
+  /* Validated: dataviz validate_palette.js --mode light (all pass) */
+  --chart-1: #6a5af9;
+  --chart-2: #10b981;
+  --chart-3: #e8950b;
+  --chart-4: #0ea5e9;
+  --chart-5: #ec4899;
+  --chart-grid: #e7e7ec;
+  --chart-axis: #8a8a96;
+
+  --hero-from: rgb(106 90 249 / 0.14);
+  --hero-to: rgb(14 165 233 / 0.06);
+}
+
+.dark {
+  --background: #08080b;
+  --sidebar: #0b0b0f;
+  --card: #101014;
+  --muted: #16161c;
+  --muted-2: #1c1c23;
+  --elevated: #141419;
+  --border: rgb(255 255 255 / 0.075);
+  --border-strong: rgb(255 255 255 / 0.13);
+  --foreground: #f3f3f6;
+  --muted-foreground: #9898a6;
+  --subtle-foreground: #6b6b78;
+  --primary: #f6f6f8;
+  --primary-foreground: #0b0b10;
+  --accent: #8b7dff;
+  --accent-foreground: #ffffff;
+  --accent-soft: rgb(139 125 255 / 0.14);
+  --success: #34d399;
+  --success-soft: rgb(52 211 153 / 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgb(251 191 36 / 0.12);
+  --danger: #f87171;
+  --danger-soft: rgb(248 113 113 / 0.12);
+  --info: #60a5fa;
+  --info-soft: rgb(96 165 250 / 0.12);
+  --ring: rgb(139 125 255 / 0.5);
+
+  /* Validated: --mode dark against #101014 (pass; CVD 7.9 → always legend + labels) */
+  --chart-1: #8b7dff;
+  --chart-2: #059669;
+  --chart-3: #d97706;
+  --chart-4: #0284c7;
+  --chart-5: #db2777;
+  --chart-grid: rgb(255 255 255 / 0.06);
+  --chart-axis: #6e6e7c;
+
+  --hero-from: rgb(139 125 255 / 0.22);
+  --hero-to: rgb(56 189 248 / 0.06);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-up: slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Base ───────────────────────────────────────────── */
+@layer base {
+  *, ::before, ::after { border-color: var(--border); }
+  html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection { background: var(--accent-soft); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  button, [role="button"] { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  code, kbd, pre, samp { font-family: var(--font-mono); }
+}
+
+/* ── Utilities ──────────────────────────────────────── */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+@utility hero-surface {
+  background:
+    radial-gradient(120% 140% at 100% 0%, var(--hero-from), transparent 55%),
+    radial-gradient(80% 120% at 0% 100%, var(--hero-to), transparent 60%),
+    var(--card);
+}
+@utility skeleton {
+  background: linear-gradient(90deg, var(--muted) 0%, var(--muted-2) 50%, var(--muted) 100%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Markdown in chat ───────────────────────────────── */
+.md { line-height: 1.7; font-size: 0.9375rem; overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 0.75em 0; }
+.md h1, .md h2, .md h3, .md h4 { font-weight: 600; line-height: 1.3; margin: 1.4em 0 0.6em; letter-spacing: -0.01em; }
+.md h1 { font-size: 1.4em; }
+.md h2 { font-size: 1.22em; }
+.md h3 { font-size: 1.08em; }
+.md ul, .md ol { margin: 0.6em 0; padding-left: 1.4em; }
+.md ul { list-style: disc; }
+.md ol { list-style: decimal; }
+.md li { margin: 0.3em 0; }
+.md li > p { margin: 0.2em 0; }
+.md a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.md blockquote { border-left: 3px solid var(--border-strong); padding-left: 1em; color: var(--muted-foreground); margin: 0.8em 0; }
+.md hr { margin: 1.4em 0; border-top: 1px solid var(--border); }
+.md :not(pre) > code { background: var(--muted); border: 1px solid var(--border); padding: 0.12em 0.38em; border-radius: 6px; font-size: 0.86em; }
+.md table { width: 100%; border-collapse: collapse; margin: 0.9em 0; font-size: 0.9em; display: block; overflow-x: auto; }
+.md th, .md td { border: 1px solid var(--border); padding: 0.45em 0.75em; text-align: left; }
+.md th { background: var(--muted); font-weight: 600; }
+.md img { max-width: 100%; border-radius: 10px; }
+.md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.3em 0; }
+
+/* Shiki dual themes */
+.shiki, .shiki span { background-color: transparent !important; }
+.dark .shiki, .dark .shiki span { color: var(--shiki-dark) !important; }

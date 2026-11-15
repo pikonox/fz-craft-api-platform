@@ -1,0 +1,22 @@
+# Caddy gets and renews the HTTPS certificate for this domain automatically.
+# __DOMAIN__ is replaced by deploy/server-setup.sh.
+__DOMAIN__ {
+	encode zstd gzip
+
+	# Dashboard API, the public /v1 API and generated files go straight to the API server.
+	# flush_interval -1 sends streamed tokens (SSE) to the client immediately.
+	@api path /api/* /v1/* /files/*
+	reverse_proxy @api 127.0.0.1:4000 {
+		flush_interval -1
+	}
+
+	# Everything else is the Next.js website and dashboard.
+	reverse_proxy 127.0.0.1:3000
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 20MiB
+			roll_keep 5
+		}
+	}
+}
