@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # One-time setup for an Ubuntu server. Run by deploy/push.sh --setup:
-#   sudo PROXY=nginx WEB_PORT=3100 API_PORT=4100 bash /opt/fz-craft/deploy/server-setup.sh fz-craft.pikonox.com
+#   sudo PROXY=nginx WEB_PORT=3100 API_PORT=4100 bash /opt/fz-craft/deploy/server-setup.sh fzcraft.pikonox.com
 #
 # PROXY=nginx  The server already runs nginx (shared with other sites). Adds an nginx site for
 #              FZ-craft and a free HTTPS certificate (certbot). Does NOT change Node, the firewall or
@@ -14,7 +14,7 @@
 #
 set -euo pipefail
 
-DOMAIN="${1:-fz-craft.pikonox.com}"
+DOMAIN="${1:-fzcraft.pikonox.com}"
 PROXY="${PROXY:-caddy}"
 WEB_PORT="${WEB_PORT:-3000}"
 API_PORT="${API_PORT:-4000}"

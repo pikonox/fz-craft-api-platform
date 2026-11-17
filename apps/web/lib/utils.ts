@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const BRAND = process.env.NEXT_PUBLIC_BRAND_NAME || "FZ-craft";
 /** Public OpenAI-compatible base URL users put in their SDKs (docs, snippets, dashboard). */
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://fz-craft.pikonox.com/v1").replace(/\/+$/, "");
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://fzcraft.pikonox.com/v1").replace(/\/+$/, "");
 /** Public site origin, derived from the API base URL. */
 export const SITE_URL = API_BASE_URL.replace(/\/v1$/, "");
 /** Prefix every API key starts with, e.g. "fz_live_". */

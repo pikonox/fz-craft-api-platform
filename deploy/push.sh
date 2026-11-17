@@ -33,7 +33,7 @@ SSH_USER=ubuntu
 PROXY=caddy
 WEB_PORT=3000
 API_PORT=4000
-DOMAIN=fz-craft.pikonox.com
+DOMAIN=fzcraft.pikonox.com
 # shellcheck source=/dev/null
 [ -f "$ROOT/deploy/server.conf" ] && . "$ROOT/deploy/server.conf"
 

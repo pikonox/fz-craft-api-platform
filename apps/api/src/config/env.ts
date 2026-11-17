@@ -31,7 +31,7 @@ const schema = z.object({
   KEY_PREFIX: z.string().default("fz_live_"),
   APP_URL: z.string().url().default("http://localhost:3000"),
   /** Base URL users put in their SDKs; shown in docs and samples. */
-  PUBLIC_API_BASE_URL: z.string().url().default("https://fz-craft.pikonox.com/v1"),
+  PUBLIC_API_BASE_URL: z.string().url().default("https://fzcraft.pikonox.com/v1"),
   API_PORT: z.coerce.number().default(4000),
   /** Interface to listen on. Empty = all interfaces (local dev); "127.0.0.1" on a server behind nginx/Caddy. */
   API_HOST: z.string().trim().default(""),
@@ -45,7 +45,7 @@ const schema = z.object({
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional().default(""),
   SMTP_PASS: z.string().optional().default(""),
-  MAIL_FROM: z.string().default("FZ-craft <no-reply@fz-craft.pikonox.com>"),
+  MAIL_FROM: z.string().default("FZ-craft <no-reply@fzcraft.pikonox.com>"),
   TELEGRAM_BOT_TOKEN: z.string().optional().default(""),
   TELEGRAM_BOT_USERNAME: z.string().optional().default(""),
   BSC_RPC_URL: z.string().default("https://bsc-dataseed.binance.org"),
