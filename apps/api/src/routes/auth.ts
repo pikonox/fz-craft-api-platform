@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { z } from "zod";
 import { OAuth2Client } from "google-auth-library";
 import { OtpCode, Session, User } from "../db/models";
@@ -123,6 +123,61 @@ authRouter.post("/login", async (req, res) => {
   }
   await createSession(req, res, user._id);
   res.json({ user: publicUser(user.toObject() as never) });
+});
+
+/** A path on this site to continue to after sign-in ("/dashboard" when missing or not a local path). */
+function safeNext(next: unknown) {
+  return typeof next === "string" && /^\/(?![\/\\])/.test(next) ? next : "/dashboard";
+}
+
+/** True when a form post comes from a page on this site (stops other sites from signing visitors into another account). */
+function fromOurSite(req: express.Request) {
+  const source = req.get("origin") || req.get("referer") || "";
+  let sourceHost = "";
+  try {
+    sourceHost = new URL(source).host;
+  } catch {
+    return false;
+  }
+  const allowed = new Set([req.get("x-forwarded-host"), req.get("host")].filter(Boolean) as string[]);
+  try {
+    allowed.add(new URL(env.APP_URL).host);
+  } catch {
+    /* APP_URL not a URL */
+  }
+  return allowed.has(sourceHost);
+}
+
+/**
+ * Plain form-post sign-in, used only when the login page's JavaScript isn't running (a browser
+ * extension or a slow connection). Same checks as POST /login; answers with redirects instead of JSON.
+ */
+authRouter.post("/login-form", express.urlencoded({ extended: false, limit: "10kb" }), async (req, res) => {
+  const back = (message: string, emailValue = "") =>
+    res.redirect(303, `/login?error=${encodeURIComponent(message)}${emailValue ? `&email=${encodeURIComponent(emailValue)}` : ""}`);
+  if (!fromOurSite(req)) return back("Please sign in from the login page.");
+  try {
+    throttle(`login:${req.ip}`, 20, 15 * 60_000);
+    const parsed = z.object({ email, password: z.string().min(1), next: z.string().optional() }).safeParse(req.body ?? {});
+    if (!parsed.success) return back("Enter your email and password.", String(req.body?.email ?? ""));
+    const next = safeNext(parsed.data.next);
+    const user = await User.findOne({ email: parsed.data.email });
+    if (!user || user.status === "deleted" || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      return back("Incorrect email or password", parsed.data.email);
+    }
+    if (user.status === "banned") return back("Your account has been suspended. Contact support.");
+    if (!user.emailVerified) {
+      await issueOtp(user.email, "verify").catch(() => undefined);
+      return res.redirect(303, `/verify-email?email=${encodeURIComponent(user.email)}&next=${encodeURIComponent(next)}`);
+    }
+    if (user.twoFactor?.enabled && user.twoFactor.secretEnc) {
+      return back("Your account uses two-factor sign-in, which needs the page to finish loading. Reload the page and try again.", user.email);
+    }
+    await createSession(req, res, user._id);
+    res.redirect(303, next);
+  } catch (err) {
+    back(err instanceof HttpError ? err.message : "Sign-in failed. Please try again.");
+  }
 });
 
 const googleClient = env.GOOGLE_CLIENT_ID ? new OAuth2Client(env.GOOGLE_CLIENT_ID) : null;

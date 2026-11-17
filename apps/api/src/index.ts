@@ -11,9 +11,9 @@ async function main() {
   await connectDb();
   await registry(); // warm the provider/model cache
   const app = createApp();
-  const server = app.listen(env.API_PORT, () => {
-    logger.info(`🚀 ${env.BRAND_NAME} server on http://localhost:${env.API_PORT}  (public: ${env.APP_URL})`);
-  });
+  const onListen = () => logger.info(`🚀 ${env.BRAND_NAME} server on http://${env.API_HOST || "localhost"}:${env.API_PORT}  (public: ${env.APP_URL})`);
+  // Behind a reverse proxy, API_HOST=127.0.0.1 keeps the port off the internet
+  const server = env.API_HOST ? app.listen(env.API_PORT, env.API_HOST, onListen) : app.listen(env.API_PORT, onListen);
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 66_000;
   startLiveFeed();

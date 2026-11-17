@@ -13,13 +13,14 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
-  const [email, setEmail] = useState("");
+  // Filled in when the no-JavaScript sign-in sends you back with a message
+  const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
   const [need2fa, setNeed2fa] = useState(false);
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(params.get("error"));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +51,10 @@ function LoginForm() {
       <p className="mt-1.5 text-sm text-muted-foreground">{need2fa ? "Enter the 6-digit code from your authenticator app." : "Sign in to your dashboard."}</p>
       <div className="mt-8">
         {!need2fa && <GoogleButton next={next} />}
-        <form onSubmit={submit} className="space-y-4">
+        {/* With JavaScript, submit() signs in. Without it (e.g. a browser extension blocks the page's scripts),
+            the browser posts the form to /api/auth/login-form, which signs in and redirects. */}
+        <form onSubmit={submit} method="post" action="/api/auth/login-form" className="space-y-4">
+          <input type="hidden" name="next" value={next} />
           {need2fa ? (
             <Field label="Authentication code">
               <Input autoFocus inputMode="numeric" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="123 456" className="h-11 text-center font-mono text-lg tracking-[0.3em]" />
@@ -58,7 +62,7 @@ function LoginForm() {
           ) : (
             <>
               <Field label="Email">
-                <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className="h-11" />
+                <Input type="email" name="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className="h-11" />
               </Field>
               <Field
                 label={
@@ -71,7 +75,7 @@ function LoginForm() {
                 }
               >
                 <div className="relative">
-                  <Input type={show ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 pr-10" />
+                  <Input type={show ? "text" : "password"} name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 pr-10" />
                   <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={show ? "Hide password" : "Show password"}>
                     {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>

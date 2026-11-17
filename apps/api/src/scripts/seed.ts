@@ -6,7 +6,7 @@ import { usdToMicros } from "@nova/shared";
 import { CHAT_CATALOG, FREE_MODELS, RETIRED_MODEL_IDS } from "./catalog";
 import { env } from "../config/env";
 import { connectDb, disconnectDb } from "../db/connect";
-import { AiModel, PaymentMethodConfig, Plan, Provider, ProviderKey, User } from "../db/models";
+import { AiModel, PaymentMethodConfig, Plan, Provider, ProviderKey, Session, User } from "../db/models";
 import { decrypt, encrypt, hashPassword } from "../lib/crypto";
 import { generateReferralCode } from "../services/referrals";
 import { onboardUser } from "../services/users";
@@ -244,8 +244,23 @@ async function main() {
     if (back.modifiedCount) console.log(`✓ ${back.modifiedCount} model(s) without a provider routed back to the dev mock`);
   }
 
-  // Admin user
-  let admin = await User.findOne({ email: env.ADMIN_EMAIL.toLowerCase() });
+  // Admin user. ADMIN_EMAIL / ADMIN_PASSWORD are used when the account is first created; after that,
+  // SYNC_ADMIN=1 updates the admin login to whatever .env says (keeping its chats, keys and history).
+  const adminEmail = env.ADMIN_EMAIL.toLowerCase();
+  const syncAdmin = process.env.SYNC_ADMIN === "1";
+  let admin = await User.findOne({ email: adminEmail });
+  if (!admin && syncAdmin) {
+    // The email in .env changed: move the original admin account to it
+    admin = await User.findOne({ role: "admin" }).sort({ createdAt: 1 });
+  }
+  if (admin && syncAdmin) {
+    const from = admin.email;
+    admin.set({ email: adminEmail, passwordHash: await hashPassword(env.ADMIN_PASSWORD), role: "admin", emailVerified: true });
+    await admin.save();
+    // Signed-in devices must log in again with the new details
+    await Session.deleteMany({ userId: admin._id });
+    console.log(`✓ admin login updated from .env: ${from === adminEmail ? adminEmail : `${from} → ${adminEmail}`} (new password set, other sessions signed out)`);
+  }
   if (!admin) {
     admin = await User.create({
       email: env.ADMIN_EMAIL.toLowerCase(),
@@ -257,6 +272,8 @@ async function main() {
       // Starts at $0 like every account; add money through a real top-up or Admin → Users → Adjust balance
     });
     console.log(`✓ admin created: ${env.ADMIN_EMAIL} / ${env.ADMIN_PASSWORD}`);
+  } else if (syncAdmin) {
+    // already updated above
   } else if (admin.role !== "admin") {
     admin.role = "admin";
     await admin.save();

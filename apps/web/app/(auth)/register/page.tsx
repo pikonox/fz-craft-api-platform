@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/primitives";
 import { GoogleButton } from "@/components/auth/google-button";
 import { api, errorMessage } from "@/lib/api";
+import { useMounted } from "@/lib/hooks";
 
 function RegisterForm() {
+  // Until the page is interactive, Enter would reload the page instead of creating the account
+  const ready = useMounted();
   const router = useRouter();
   const params = useSearchParams();
   const [ref, setRef] = useState("");
@@ -64,7 +67,7 @@ function RegisterForm() {
             <Input type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
           </Field>
           {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p>}
-          <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading} disabled={!strong}>
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading} disabled={!strong || !ready}>
             Create account
           </Button>
         </form>

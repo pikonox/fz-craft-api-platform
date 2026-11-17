@@ -33,6 +33,8 @@ const schema = z.object({
   /** Base URL users put in their SDKs; shown in docs and samples. */
   PUBLIC_API_BASE_URL: z.string().url().default("https://fz-craft.pikonox.com/v1"),
   API_PORT: z.coerce.number().default(4000),
+  /** Interface to listen on. Empty = all interfaces (local dev); "127.0.0.1" on a server behind nginx/Caddy. */
+  API_HOST: z.string().trim().default(""),
   MONGODB_URI: z.string().default("mongodb://localhost:27017/nova?replicaSet=rs0&directConnection=true"),
   SESSION_SECRET: z.string().min(16),
   ENCRYPTION_KEY: z.string().regex(/^[0-9a-f]{64}$/i, "ENCRYPTION_KEY must be 64 hex chars (openssl rand -hex 32)"),
