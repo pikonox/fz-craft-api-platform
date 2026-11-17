@@ -66,6 +66,23 @@ function extractKey(req: Request) {
 
 const normalizeIp = (ip: string) => ip.replace(/^::ffff:/, "");
 
+/**
+ * The caller's plan from an API key, for public endpoints that personalise their answer (e.g.
+ * /models.json). Never throws and never counts against rate limits: returns null when there is no
+ * usable key.
+ */
+export async function optionalKeyAccess(req: Request): Promise<{ access: ModelAccess; planName: string; isPaid: boolean } | null> {
+  const raw = extractKey(req);
+  if (!raw) return null;
+  const key = await findKey(raw);
+  if (!key || key.status === "revoked" || key.status === "paused") return null;
+  if (key.expiresAt && new Date(key.expiresAt).getTime() < Date.now()) return null;
+  const user = await findUser(String(key.userId));
+  if (!user || user.status !== "active") return null;
+  const ent = await getEntitlement(user._id);
+  return { access: ent.access, planName: ent.pass?.planName ?? ent.monthly?.planName ?? "Free", isPaid: ent.isPaid };
+}
+
 /** Authenticates /v1 requests by API key and applies plan + key rate limits. */
 export const apiKeyAuth: RequestHandler = async (req, res, next) => {
   const raw = extractKey(req);

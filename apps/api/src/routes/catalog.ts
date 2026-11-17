@@ -4,6 +4,7 @@ import { Plan } from "../db/models";
 import { listModels } from "../gateway/registry";
 import { health, registry } from "../gateway/registry";
 import { getEntitlement } from "../services/billing";
+import { optionalKeyAccess } from "../gateway/context";
 import { getSettings } from "../services/settings";
 import { env } from "../config/env";
 
@@ -58,34 +59,67 @@ function servable(m: { routes?: { providerId: unknown; enabled?: boolean }[] }, 
   });
 }
 
+type PlanRow = { name: string; kind: string; isFree: boolean; modelAccess: ModelAccess; priceMonthly: number; pricePass: number; durationHours: number };
+let planCache: { at: number; plans: PlanRow[] } | null = null;
+
+/** Plans on sale (cached for a minute), used to say what unlocks a model. */
+async function plansOnSale(): Promise<PlanRow[]> {
+  if (planCache && Date.now() - planCache.at < 60_000) return planCache.plans;
+  const plans = await Plan.find({ active: true }).select("name kind isFree modelAccess priceMonthly pricePass durationHours").lean<PlanRow[]>();
+  planCache = { at: Date.now(), plans };
+  return plans;
+}
+
+/** The cheapest monthly plan and the cheapest day pass that unlock models of this access level. */
+function unlockedBy(access: ModelAccess, plans: PlanRow[]) {
+  const ok = plans.filter((p) => !p.isFree && ACCESS_RANK[p.modelAccess] >= ACCESS_RANK[access]);
+  const monthly = ok.filter((p) => p.kind === "monthly").sort((a, b) => a.priceMonthly - b.priceMonthly)[0];
+  const pass = ok.filter((p) => p.kind === "pass").sort((a, b) => a.pricePass - b.pricePass)[0];
+  return {
+    plan: monthly ? { name: monthly.name, price_per_month: usd(monthly.priceMonthly) } : null,
+    pass: pass ? { name: pass.name, price: usd(pass.pricePass), hours: pass.durationHours } : null,
+  };
+}
+
 /**
- * Public model list for apps and extensions, served at https://<domain>/models.json (no API key).
+ * Public model list for apps and extensions, served at https://<domain>/models.json (no API key needed).
  * Built from the database on every request (models are cached for ~30 s), so models added or enabled
- * in Admin → Models show up automatically. Only models that can be used right now are listed (enabled,
- * not under maintenance, and connected to a working provider); ?include=all lists every enabled model
- * with its "available" flag.
+ * in Admin → Models show up automatically.
+ *
+ * Lists every enabled model that isn't under maintenance (?include=all adds those too), including the
+ * paid ones: "locked" says whether the caller's plan can use it — send the user's API key
+ * (Authorization: Bearer fz_live_…) to get their own plan, otherwise the Free plan is assumed — and
+ * "unlock" names the cheapest plan / day pass that opens it. "available" says whether the model is
+ * connected to a working provider right now.
  */
 catalogRouter.get("/models.json", async (req, res) => {
   const includeAll = req.query.include === "all";
-  const reg = await registry();
+  const [reg, caller, plans] = await Promise.all([registry(), optionalKeyAccess(req), plansOnSale()]);
+  const viewerAccess: ModelAccess = caller?.access ?? "free";
   const models = [...reg.models.values()]
-    .filter((m) => m.enabled)
-    .map((m) => ({ m, available: (m.status ?? "active") === "active" && servable(m, reg) }))
-    .filter(({ available }) => includeAll || available)
-    .sort((a, b) => a.m.sort - b.m.sort || a.m.name.localeCompare(b.m.name));
+    .filter((m) => m.enabled && (includeAll || (m.status ?? "active") === "active"))
+    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
   const base = env.PUBLIC_API_BASE_URL.replace(/\/+$/, "");
-  res.setHeader("Cache-Control", "public, max-age=60");
+  const site = base.replace(/\/v1$/, "");
+  // Personalised answers must not be shared by caches
+  res.setHeader("Cache-Control", caller ? "private, max-age=60" : "public, max-age=60");
+  res.setHeader("Vary", "Authorization, X-Api-Key");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.json({
     object: "list",
     provider: env.BRAND_NAME,
     base_url: base,
     // Anthropic SDKs and Claude Code add /v1 themselves
-    anthropic_base_url: base.replace(/\/v1$/, ""),
+    anthropic_base_url: site,
+    upgrade_url: `${site}/dashboard/billing/plan`,
+    // Whose plan "locked" is based on (send an API key to get the user's own)
+    viewer: { signed_in: Boolean(caller), plan: caller?.planName ?? "Free" },
     updated_at: new Date().toISOString(),
     count: models.length,
-    data: models.map(({ m, available }) => {
+    data: models.map((m) => {
       const p = m.pricing ?? ({} as NonNullable<typeof m.pricing>);
+      const access = m.access as ModelAccess;
+      const locked = ACCESS_RANK[access] > ACCESS_RANK[viewerAccess];
       const pricing =
         m.type === "image"
           ? { currency: "USD", per_image: Object.fromEntries(Object.entries(p.perImage ?? {}).map(([q, v]) => [q, usd(v as number)])) }
@@ -101,11 +135,14 @@ catalogRouter.get("/models.json", async (req, res) => {
         vendor: m.vendor,
         type: m.type,
         status: m.status ?? "active",
-        // Can be called right now (always true unless ?include=all)
-        available,
-        // Which plan unlocks it: free = every account, paid = paid plans and passes, early = top plan
-        plan: m.access,
-        free: m.access === "free",
+        // Which plan level opens it: free = every account, paid = paid plans and day passes, early = top plan
+        plan: access,
+        free: access === "free",
+        // The caller's plan can't use it yet → show a lock and the upgrade link
+        locked,
+        unlock: locked ? unlockedBy(access, plans) : null,
+        // Connected to a working provider right now
+        available: (m.status ?? "active") === "active" && servable(m, reg),
         featured: Boolean(m.featured),
         description: m.description ?? "",
         capabilities: m.capabilities ?? [],
