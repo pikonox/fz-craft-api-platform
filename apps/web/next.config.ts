@@ -35,6 +35,9 @@ const nextConfig: NextConfig = {
       { source: "/api/:path*", destination: `${api}/api/:path*` },
       { source: "/v1/:path*", destination: `${api}/v1/:path*` },
       { source: "/files/:path*", destination: `${api}/files/:path*` },
+      // Public model list for apps and extensions (built live from the database)
+      { source: "/models.json", destination: `${api}/api/models.json` },
+      { source: "/model.json", destination: `${api}/api/models.json` },
     ];
   },
 };
