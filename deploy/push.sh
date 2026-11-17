@@ -7,6 +7,11 @@
 #   Every update: bash deploy/push.sh SERVER_IP             (uploads code, builds, restarts)
 #   New .env:     bash deploy/push.sh SERVER_IP --env       (re-creates the server .env from your local one)
 #
+# Add --git to take the code from GitHub instead of this Mac: the server clones the repository the
+# first time and pulls the latest main after that (push your changes to GitHub first). The .env is
+# never on GitHub, so it is always copied from this Mac.
+#   bash deploy/push.sh SERVER_IP --setup --git
+#
 # Before the first run, let this Mac log in with its key (asks for the server password once):
 #   ssh-copy-id -i ~/.ssh/fz-craft.pub root@SERVER_IP
 #
@@ -15,14 +20,16 @@
 set -euo pipefail
 
 HOST="${1:-}"
-[ -n "$HOST" ] || { echo "Usage: bash deploy/push.sh SERVER_IP [--setup] [--env]"; exit 1; }
+[ -n "$HOST" ] || { echo "Usage: bash deploy/push.sh SERVER_IP [--setup] [--env] [--git]"; exit 1; }
 shift
 SETUP=0
 ENVFILE=0
+FROM_GIT=0
 for arg in "$@"; do
   case "$arg" in
     --setup) SETUP=1; ENVFILE=1 ;;
     --env) ENVFILE=1 ;;
+    --git) FROM_GIT=1 ;;
     *) echo "Unknown option: $arg"; exit 1 ;;
   esac
 done
@@ -38,6 +45,7 @@ DOMAIN=fzcraft.pikonox.com
 [ -f "$ROOT/deploy/server.conf" ] && . "$ROOT/deploy/server.conf"
 
 KEY="${SSH_KEY:-$HOME/.ssh/fz-craft}"
+REPO="${REPO:-https://github.com/pikonox/fz-craft-api-platform.git}"
 REMOTE=/opt/fz-craft
 SSH_OPTS=(-i "$KEY" -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30)
 SUDO=$([ "$SSH_USER" = root ] && echo "" || echo "sudo")
@@ -59,11 +67,26 @@ if ! ssh "${SSH_OPTS[@]}" -o BatchMode=yes -o ConnectTimeout=15 "$SSH_USER@$HOST
 fi
 remote "$SUDO mkdir -p $REMOTE && $SUDO chown \$(id -un):\$(id -gn) $REMOTE && echo connected as \$(id -un)"
 
-step "Uploading code"
-rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
-  --exclude node_modules --exclude .next --exclude dist --exclude .turbo --exclude .git \
-  --exclude storage --exclude .env --exclude '*.log' --exclude .DS_Store \
-  "$ROOT/" "$SSH_USER@$HOST:$REMOTE/"
+if [ "$FROM_GIT" -eq 1 ]; then
+  step "Getting the code from GitHub ($REPO, branch main)"
+  # First time: clone into the (empty) folder. After that: move to the latest main. Untracked files
+  # such as .env, node_modules and build output are left alone.
+  remote "command -v git >/dev/null || { $SUDO apt-get update -qq && $SUDO apt-get install -y -qq git; }
+    if [ -d $REMOTE/.git ]; then
+      git -C $REMOTE fetch -q origin main && git -C $REMOTE reset -q --hard origin/main
+    elif [ -z \"\$(ls -A $REMOTE)\" ]; then
+      git clone -q --branch main $REPO $REMOTE
+    else
+      echo '$REMOTE already has files but is not a git clone. Deploy once without --git, or empty the folder.'; exit 1
+    fi
+    git -C $REMOTE log --oneline -1"
+else
+  step "Uploading code"
+  rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
+    --exclude node_modules --exclude .next --exclude dist --exclude .turbo --exclude .git \
+    --exclude storage --exclude .env --exclude '*.log' --exclude .DS_Store \
+    "$ROOT/" "$SSH_USER@$HOST:$REMOTE/"
+fi
 
 if [ "$ENVFILE" -eq 1 ]; then
   step "Creating the server .env (production values)"
