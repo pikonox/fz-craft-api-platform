@@ -15,6 +15,17 @@ export const KEY_PREFIX = process.env.NEXT_PUBLIC_KEY_PREFIX || "fz_live_";
 /** Generated images (and their history) are deleted after this many hours. */
 export const IMAGE_RETENTION_HOURS = Number(process.env.NEXT_PUBLIC_IMAGE_RETENTION_HOURS) || 48;
 
+/** FZ-Craft Code, our AI coding agent for VS Code, on the Visual Studio Marketplace. */
+const VSCODE_EXTENSION_ID = process.env.NEXT_PUBLIC_VSCODE_EXTENSION_ID || "mdfahadzulfiqar.fz-pikonox-com";
+export const VSCODE_EXTENSION = {
+  id: VSCODE_EXTENSION_ID,
+  name: "FZ-Craft Code",
+  /** Opens VS Code on the extension's page, with its Install button */
+  installUrl: `vscode:extension/${VSCODE_EXTENSION_ID}`,
+  marketplaceUrl: `https://marketplace.visualstudio.com/items?itemName=${VSCODE_EXTENSION_ID}`,
+  cli: `code --install-extension ${VSCODE_EXTENSION_ID}`,
+};
+
 export function relativeTime(date: string | number | Date | null | undefined): string {
   if (!date) return "never";
   const d = new Date(date).getTime();

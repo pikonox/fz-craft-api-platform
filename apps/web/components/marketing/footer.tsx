@@ -23,6 +23,7 @@ const COLUMNS = [
       { href: "/docs#chat-completions", label: "API reference" },
       { href: "/docs#rate-limits", label: "Rate limits" },
       { href: "/docs#errors", label: "Error codes" },
+      { href: "/#vscode", label: "VS Code extension" },
     ],
   },
   {

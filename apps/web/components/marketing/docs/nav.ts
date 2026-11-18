@@ -26,7 +26,10 @@ export const DOC_NAV: { group: string; items: DocNavItem[] }[] = [
   },
   {
     group: "Coding tools",
-    items: [{ id: "claude-code", label: "Claude Code & others" }],
+    items: [
+      { id: "vscode", label: "VS Code extension" },
+      { id: "claude-code", label: "Claude Code & others" },
+    ],
   },
   {
     group: "Limits & errors",

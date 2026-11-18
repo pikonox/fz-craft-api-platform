@@ -2,7 +2,8 @@ import * as React from "react";
 import Link from "next/link";
 import { CircleAlert, Info, KeyRound, Lightbulb, Link2 } from "lucide-react";
 import { CopyButton } from "@/components/ui/primitives";
-import { API_BASE_URL, BRAND, cn, IMAGE_RETENTION_HOURS, KEY_PREFIX } from "@/lib/utils";
+import { API_BASE_URL, BRAND, cn, IMAGE_RETENTION_HOURS, KEY_PREFIX, VSCODE_EXTENSION } from "@/lib/utils";
+import { VsCodeCommand, VsCodeInstallButtons } from "../vscode";
 import { CodeBlock, CodeTabs } from "../code-block";
 import { ImagePricing } from "../pricing";
 import { ModelsTable } from "./live";
@@ -399,6 +400,36 @@ export function DocsContent() {
           Set <C>&quot;stream&quot;: true</C> to receive Anthropic server-sent events. Errors use Anthropic&apos;s shape: <C>{`{"type":"error","error":{"type":"rate_limit_error","message":"…"}}`}</C>.
         </P>
         <CodeBlock code={SA.MESSAGES_STREAM} lang="sse" title="event stream" />
+      </Section>
+
+      {/* VS Code extension */}
+      <Section id="vscode" title="VS Code extension">
+        <P>
+          <strong className="font-semibold text-foreground">{VSCODE_EXTENSION.name}</strong> is our AI coding agent for VS Code. It&apos;s connected to {BRAND} out of the box: base URL{" "}
+          <C>{API_BASE_URL}</C>, default model <C>deepseek-v4.1-flash</C>.
+        </P>
+        <VsCodeInstallButtons size="sm" className="my-4" />
+        <VsCodeCommand className="mb-5 max-w-lg" />
+        <H3>Set it up</H3>
+        <UL>
+          <li>Install the extension (button above, or the terminal command).</li>
+          <li>
+            When the welcome prompt appears, click <strong className="font-semibold text-foreground">Set API Key</strong> and paste your key (it starts with <C>{KEY_PREFIX}</C>). Create one under{" "}
+            <Link href="/dashboard/api-keys" className="font-medium text-accent hover:underline">
+              Dashboard → API keys
+            </Link>
+            .
+          </li>
+          <li>
+            Open the chat with the <strong className="font-semibold text-foreground">FZ</strong> icon in the activity bar, or <C>Cmd+Alt+O</C> / <C>Ctrl+Alt+O</C>.
+          </li>
+          <li>Click the model chip to pick a model. Free models are listed first; models that need a paid plan show a lock and how to unlock them.</li>
+        </UL>
+        <Callout tone="tip" title="Modes and commands">
+          <strong className="font-semibold text-foreground">Ask</strong> (default) shows every change as a diff to apply or reject; <strong className="font-semibold text-foreground">Auto-edit</strong>,{" "}
+          <strong className="font-semibold text-foreground">Auto</strong> and read-only <strong className="font-semibold text-foreground">Plan</strong> are one click away (<C>Shift+Tab</C>). Type <C>/</C> for
+          commands such as <C>/fix</C>, <C>/test</C>, <C>/review</C>, <C>/explain</C> and <C>/init</C>.
+        </Callout>
       </Section>
 
       {/* Claude Code */}

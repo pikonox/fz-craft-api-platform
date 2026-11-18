@@ -123,4 +123,5 @@ export const CHAT_CATALOG: CatalogModel[] = [
 ];
 
 /** Removed models: deleted from the database by `SYNC_MODELS=1 pnpm seed`. */
-export const RETIRED_MODEL_IDS = ["qwen3-coder-plus", "llama-4-maverick", "fz-r1", "minimax-m2.7"];
+// sunburst-lite: not offered by FreeModel (it only has sunburst-2.5)
+export const RETIRED_MODEL_IDS = ["qwen3-coder-plus", "llama-4-maverick", "fz-r1", "minimax-m2.7", "sunburst-lite"];

@@ -160,20 +160,6 @@ async function main() {
       pricing: { perImage: FLAT_IMAGE_PRICE },
       routes: route("sunburst-2.5", "mock-image"),
     },
-    {
-      publicId: "sunburst-lite",
-      name: "Sunburst Lite",
-      vendor: "Sunburst",
-      type: "image",
-      description: "Fast drafts and ideas at the lowest price.",
-      capabilities: [],
-      contextLength: 0,
-      maxOutput: 0,
-      access: "free",
-      sort: 301,
-      pricing: { perImage: FLAT_IMAGE_PRICE },
-      routes: route("sunburst-lite", "mock-image"),
-    },
   ];
   // Fresh databases get the whole catalog. SYNC_MODELS=1 also refreshes names, prices, capabilities
   // and status of existing models (routes and on/off switches you set in the admin are kept)

@@ -6,6 +6,7 @@ import { ModelStrip } from "@/components/marketing/landing/models";
 import { ModelShowcase } from "@/components/marketing/landing/model-showcase";
 import { Features, FinalCta, Hero, HowItWorks } from "@/components/marketing/landing/sections";
 import { RoutingDiagram } from "@/components/marketing/landing/routing";
+import { VsCodeSection } from "@/components/marketing/vscode";
 import { PricingFacts, PricingPlans } from "@/components/marketing/pricing";
 import { Container, SectionHeading } from "@/components/marketing/ui";
 import { BRAND } from "@/lib/utils";
@@ -79,6 +80,12 @@ export default function LandingPage() {
           <div className="mt-14">
             <RoutingDiagram />
           </div>
+        </Container>
+      </section>
+
+      <section id="vscode" className="scroll-mt-20 overflow-hidden border-t border-border bg-sidebar/40 py-20 sm:py-28">
+        <Container>
+          <VsCodeSection />
         </Container>
       </section>
 

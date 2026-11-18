@@ -1,5 +1,6 @@
 "use client";
 
+import { VsCodeCard } from "@/components/marketing/vscode";
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -203,6 +204,8 @@ export default function OverviewPage() {
           </div>
         </Card>
       )}
+
+      <VsCodeCard />
 
       {/* Activity */}
       <section className="space-y-4">
