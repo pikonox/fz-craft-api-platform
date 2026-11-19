@@ -20,10 +20,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#08080b" },
-    { media: "(prefers-color-scheme: light)", color: "#f7f7f8" },
-  ],
+  // The site opens in light mode for everyone (dark is a choice in the theme toggle).
+  themeColor: "#f7f7f8",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
