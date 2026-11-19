@@ -7,6 +7,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { CodeWindow } from "../code-window";
+import { VsCodeHeroStrip } from "../vscode";
+import { VSCODE_EXTENSION } from "@/lib/utils";
 import { CtaButtons } from "../session";
 import { FeaturesGrid } from "./features";
 import { HowItWorksDemo } from "./how-it-works";
@@ -43,11 +45,11 @@ export function Hero() {
       <Container className="relative grid items-center gap-12 pb-16 pt-12 sm:pt-16 lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:pb-24 lg:pt-20">
         <div className="flex min-w-0 animate-slide-up flex-col items-start">
           <Link
-            href="/docs"
+            href="#vscode"
             className="group inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-card/70 py-1 pl-1 pr-3 text-[12.5px] text-muted-foreground backdrop-blur transition-colors hover:text-foreground"
           >
             <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">New</span>
-            <span className="truncate">Reasoning, vision &amp; image models on one key</span>
+            <span className="truncate">{VSCODE_EXTENSION.name} for VS Code is live</span>
             <ArrowRight className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <h1 className="mt-6 text-balance text-[40px] font-semibold leading-[1.04] tracking-[-0.03em] sm:text-[54px] lg:text-[44px] xl:text-[54px]">
@@ -67,6 +69,7 @@ export function Hero() {
               </li>
             ))}
           </ul>
+          <VsCodeHeroStrip className="mt-8" />
         </div>
         <div className="min-w-0 animate-fade-in">
           <CodeWindow />

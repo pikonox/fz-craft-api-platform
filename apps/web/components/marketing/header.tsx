@@ -11,11 +11,16 @@ import { useMounted } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { useSession } from "./session";
 
-const LINKS = [
+const LINKS: { href: string; label: string; mobileLabel?: string; badge?: string }[] = [
   { href: "/models", label: "Models" },
   { href: "/pricing", label: "Pricing" },
   { href: "/docs", label: "Docs" },
+  { href: "/#vscode", label: "VS Code", mobileLabel: "VS Code extension", badge: "New" },
 ];
+
+function NewBadge({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-accent">{children}</span>;
+}
 
 function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
@@ -67,12 +72,13 @@ export function MarketingHeader() {
               key={l.href}
               href={l.href}
               className={cn(
-                "rounded-lg px-3 py-1.5 text-[13.5px] font-medium transition-colors hover:bg-muted hover:text-foreground",
+                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13.5px] font-medium transition-colors hover:bg-muted hover:text-foreground",
                 isActive(l.href) ? "text-foreground" : "text-muted-foreground",
               )}
               aria-current={isActive(l.href) ? "page" : undefined}
             >
               {l.label}
+              {l.badge && <NewBadge>{l.badge}</NewBadge>}
             </Link>
           ))}
         </nav>
@@ -106,8 +112,9 @@ export function MarketingHeader() {
         <div id="mobile-nav" className="animate-slide-up border-t border-border bg-background/95 backdrop-blur-xl md:hidden">
           <nav aria-label="Mobile" className="mx-auto flex max-w-[1200px] flex-col gap-1 px-4 py-3 sm:px-6">
             {LINKS.map((l) => (
-              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-muted">
-                {l.label}
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-[15px] font-medium text-foreground hover:bg-muted">
+                {l.mobileLabel ?? l.label}
+                {l.badge && <NewBadge>{l.badge}</NewBadge>}
               </Link>
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-3">

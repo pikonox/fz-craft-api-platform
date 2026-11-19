@@ -164,6 +164,37 @@ function VsCodePreview() {
   );
 }
 
+/** Compact install strip for the home page hero. */
+export function VsCodeHeroStrip({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex w-full max-w-xl items-center gap-3 rounded-2xl border border-border bg-card/60 p-2.5 shadow-sm backdrop-blur sm:pr-3", className)}>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card dark:bg-muted">
+        <LogoMark className="w-[78%]" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13.5px] font-semibold tracking-tight">{VSCODE_EXTENSION.name} for VS Code</p>
+        <p className="truncate text-[12.5px] text-muted-foreground">An AI coding agent in your editor. Free to install.</p>
+      </div>
+      {/* Phones can't run VS Code, so they get the Marketplace page instead of the vscode: link. */}
+      <Button variant="accent" size="sm" asChild className="hidden shrink-0 sm:inline-flex">
+        <a href={VSCODE_EXTENSION.installUrl} aria-label={`Install ${VSCODE_EXTENSION.name} in VS Code`}>
+          <Download /> Install
+        </a>
+      </Button>
+      <Button variant="accent" size="sm" asChild className="shrink-0 sm:hidden">
+        <a href={VSCODE_EXTENSION.marketplaceUrl} target="_blank" rel="noopener noreferrer">
+          View <ExternalLink />
+        </a>
+      </Button>
+      <Button variant="ghost" size="icon-sm" asChild className="hidden shrink-0 sm:inline-flex">
+        <a href={VSCODE_EXTENSION.marketplaceUrl} target="_blank" rel="noopener noreferrer" aria-label="View on the VS Code Marketplace" title="View on the VS Code Marketplace">
+          <ExternalLink />
+        </a>
+      </Button>
+    </div>
+  );
+}
+
 /** Compact card for the dashboard. */
 export function VsCodeCard({ className }: { className?: string }) {
   return (
