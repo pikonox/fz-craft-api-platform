@@ -534,7 +534,7 @@ export function DocsContent() {
             still refresh tokens every 30 days.
           </li>
           <li>
-            <strong className="font-semibold text-foreground">What counts</strong> — input tokens + output tokens (including reasoning). Cached input tokens count at 10%. Embeddings count
+            <strong className="font-semibold text-foreground">What counts</strong> — input tokens + output tokens (including reasoning). Cached input tokens count like normal input. Coding tools such as Claude Code and the VS Code extension resend the conversation and files on every step (often 20k–100k+ tokens per request), so they use an allowance far faster than chat. Embeddings count
             input tokens only.
           </li>
           <li>

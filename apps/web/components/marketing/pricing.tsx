@@ -379,7 +379,7 @@ export function PaymentMethodGrid({ className }: { className?: string }) {
 /** Small "how pricing works" strip shown under plan cards. */
 export function PricingFacts() {
   const facts = [
-    { icon: Layers, title: "Tokens, not surprises", body: "Every plan is a fixed token allowance that refreshes every 30 days. Input and output tokens count; cached input counts at 10%." },
+    { icon: Layers, title: "Tokens, not surprises", body: "Every plan is a fixed token allowance that refreshes every 30 days. Input and output tokens count, including cached input." },
     { icon: Zap, title: "Top up with a 24h pass", body: "Ran out early? A pass adds tokens instantly and is used before your plan's allowance." },
     { icon: ImageIcon, title: "Images bill separately", body: "Image generations draw from a separate image wallet, per image. Images that fail are never charged." },
   ];

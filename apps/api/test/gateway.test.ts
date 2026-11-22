@@ -62,8 +62,8 @@ describe("usage maths", () => {
     expect(normalizeUsage(null)).toBeNull();
   });
 
-  it("bills cached input at 10%", () => {
-    expect(billedTokens({ input: 1000, output: 200, cached: 500, reasoning: 0 })).toBe(500 + 50 + 200);
+  it("bills cached input in full, like the upstream", () => {
+    expect(billedTokens({ input: 1000, output: 200, cached: 500, reasoning: 0 })).toBe(1000 + 200);
   });
 
   it("prices tokens in micros", () => {

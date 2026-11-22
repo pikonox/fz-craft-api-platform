@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 const FAQ: FaqItem[] = [
   {
     q: "What counts as a token?",
-    a: "Input tokens plus output tokens, including any reasoning tokens a model produces. Cached input tokens (reported by the model as cached) count at 10% of their size toward your allowance.",
+    a: "Input tokens plus output tokens, including any reasoning tokens a model produces. Cached input tokens count like any other input token. Coding tools resend the whole conversation on every step, so long sessions use tokens much faster than chat.",
   },
   {
     q: "When does my token allowance refresh?",

@@ -2,7 +2,7 @@
  * How does the upstream (FreeModel.in) count tokens? It has no usage API, so this sends a few
  * measured requests straight to it and you type in the "Billed tokens" figure from its dashboard
  * before and after. It then compares that with the usage the upstream reports and with how
- * FZ-craft counts tokens for customers (cached input at 10%).
+ * FZ-craft counts tokens for customers (gateway/usage.ts CACHED_TOKEN_WEIGHT).
  *
  *   pnpm calibrate gpt-5.5                        (from the repo root)
  *   pnpm calibrate gpt-5.5 --size 20000 --runs 3  (prompt size in tokens, requests per step)

@@ -237,7 +237,7 @@ function UsagePage() {
                 <div className="mt-3 h-2 rounded-full bg-muted-2">
                   <div className="h-2 rounded-full bg-chart-3" style={{ width: `${Math.max(cacheHit * 100, cacheHit ? 1 : 0)}%` }} />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">Cached input tokens count as 10% against your plan. Reuse long system prompts to save tokens.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Cached input counts like normal input. Long chats and coding sessions resend earlier messages on every step, so start a new chat when you change topic to use fewer tokens.</p>
               </Card>
             </div>
           </div>

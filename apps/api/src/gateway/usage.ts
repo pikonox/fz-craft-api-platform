@@ -8,8 +8,12 @@ import type { CallerContext } from "./context";
 import type { Candidate } from "./router";
 import type { Usage } from "./stream";
 
-/** Cached input tokens count for 10% of a normal input token against the plan quota. */
-export const CACHED_TOKEN_WEIGHT = 0.1;
+/**
+ * How much a cached input token counts against the plan, relative to a normal input token.
+ * Our upstream (FreeModel.in) bills cached input in full (measured with `pnpm calibrate`,
+ * 2026-11-22), so customers' plans count it in full too and drain at the same speed as ours.
+ */
+export const CACHED_TOKEN_WEIGHT = 1;
 
 export function billedTokens(u: Usage): number {
   const uncached = Math.max(0, u.input - u.cached);
