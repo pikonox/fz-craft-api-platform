@@ -68,7 +68,7 @@ export function ProfileCard({ user }: { user: User }) {
           </Field>
           <div className="flex flex-col-reverse gap-3 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-subtle-foreground">
-              Member since {formatDate(user.createdAt)} · Sign-in with {[user.hasPassword && "password", user.googleLinked && "Google"].filter(Boolean).join(" + ") || "email code"}
+              Member since {formatDate(user.createdAt)} · Sign-in with {[user.hasPassword && "password", user.googleLinked && "Google", user.githubLinked && "GitHub"].filter(Boolean).join(" + ") || "email code"}
             </p>
             <Button type="submit" variant="primary" disabled={!dirty || Boolean(nameError) || saving}>
               {saving ? "Saving…" : "Save changes"}

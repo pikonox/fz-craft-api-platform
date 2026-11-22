@@ -12,6 +12,7 @@ import { onboardUser, publicUser } from "../services/users";
 import { telegramEnabled } from "../services/settings";
 import { logger } from "../lib/logger";
 import { verifyFirebaseIdToken } from "../lib/firebase";
+import { NoVerifiedEmailError, githubVerifiedEmail } from "../lib/github";
 
 export const authRouter = Router();
 
@@ -68,7 +69,7 @@ authRouter.get("/config", (_req, res) => {
 });
 
 authRouter.post("/register", async (req, res) => {
-  if (!env.ALLOW_EMAIL_SIGNUP) throw forbidden("New accounts are created with Google. Use “Continue with Google”.");
+  if (!env.ALLOW_EMAIL_SIGNUP) throw forbidden("New accounts are created with Google or GitHub. Use one of the buttons above.");
   throttle(`reg:${req.ip}`, 10, 15 * 60_000);
   const body = z.object({ name: z.string().trim().min(1, "Enter your name").max(80), email, password, ref: z.string().max(40).optional() }).parse(req.body);
   let user = await User.findOne({ email: body.email });
@@ -187,20 +188,22 @@ authRouter.post("/login-form", express.urlencoded({ extended: false, limit: "10k
 });
 
 /**
- * Sign in (or create the account for) a verified Google identity. An existing account with the same
- * email is linked: Google has verified that the person owns the address.
+ * Sign in (or create the account for) a Google or GitHub identity whose email the provider has
+ * verified. An existing account with the same email is linked: the person proved they own it.
  */
-async function signInWithGoogleAccount(req: express.Request, res: express.Response, g: { googleSub: string; email: string; name?: string | null; ref?: string }) {
-  let user = await User.findOne({ $or: [{ googleId: g.googleSub }, { email: g.email.toLowerCase() }] });
+async function signInWithIdentity(req: express.Request, res: express.Response, g: { provider: "google" | "github"; subject: string; email: string; name?: string | null; ref?: string }) {
+  const idField = g.provider === "google" ? "googleId" : "githubId";
+  const email = g.email.toLowerCase();
+  let user = await User.findOne({ $or: [{ [idField]: g.subject }, { email }] });
   let isNew = false;
   if (!user) {
     isNew = true;
-    user = await User.create({ email: g.email.toLowerCase(), name: g.name ?? "", googleId: g.googleSub, emailVerified: true, referralCode: await generateReferralCode() });
+    user = await User.create({ email, name: g.name ?? "", [idField]: g.subject, emailVerified: true, referralCode: await generateReferralCode() });
     if (g.ref) await attachReferral(user._id, g.ref, "link").catch((err) => logger.debug({ err: err.message }, "referral not attached"));
   } else {
     if (user.status === "banned") throw forbidden("Your account has been suspended. Contact support.");
     if (user.status === "deleted") throw unauthorized("This account was deleted");
-    if (!user.googleId) user.googleId = g.googleSub;
+    if (!user.get(idField)) user.set(idField, g.subject);
     if (!user.name && g.name) user.name = g.name;
     const wasUnverified = !user.emailVerified;
     user.emailVerified = true;
@@ -212,20 +215,42 @@ async function signInWithGoogleAccount(req: express.Request, res: express.Respon
   return user;
 }
 
-/** "Continue with Google" via Firebase Auth: the browser sends the Firebase ID token. */
+/**
+ * "Continue with Google" / "Continue with GitHub" via Firebase Auth. The browser sends the Firebase
+ * ID token; for GitHub also its GitHub OAuth token, so we can read the verified email from GitHub.
+ */
 authRouter.post("/firebase", async (req, res) => {
-  if (!env.FIREBASE_PROJECT_ID) throw badRequest("Google sign-in is not configured");
+  if (!env.FIREBASE_PROJECT_ID) throw badRequest("Sign-in is not configured");
   throttle(`fb:${req.ip}`, 30, 15 * 60_000);
-  const body = z.object({ idToken: z.string().min(20).max(8192), ref: z.string().max(40).optional() }).parse(req.body);
+  const body = z.object({ idToken: z.string().min(20).max(8192), githubToken: z.string().min(10).max(512).optional(), ref: z.string().max(40).optional() }).parse(req.body);
   const id = await verifyFirebaseIdToken(body.idToken, env.FIREBASE_PROJECT_ID).catch((err) => {
     logger.debug({ err: (err as Error).message }, "firebase token rejected");
     return null;
   });
-  if (!id?.email) throw unauthorized("Google sign-in failed. Please try again.");
-  if (id.provider !== "google.com" || !id.googleSub) throw unauthorized("Please use “Continue with Google”.");
-  if (!id.emailVerified) throw unauthorized("Your Google email isn't verified");
-  const user = await signInWithGoogleAccount(req, res, { googleSub: id.googleSub, email: id.email, name: id.name, ref: body.ref });
-  res.json({ user: publicUser(user.toObject() as never) });
+  if (!id) throw unauthorized("Sign-in failed. Please try again.");
+
+  if (id.provider === "google.com") {
+    if (!id.email || !id.googleSub) throw unauthorized("Google sign-in failed. Please try again.");
+    if (!id.emailVerified) throw unauthorized("Your Google email isn't verified");
+    const user = await signInWithIdentity(req, res, { provider: "google", subject: id.googleSub, email: id.email, name: id.name, ref: body.ref });
+    return void res.json({ user: publicUser(user.toObject() as never) });
+  }
+
+  if (id.provider === "github.com") {
+    if (!id.githubId || !body.githubToken) throw unauthorized("GitHub sign-in failed. Please try again.");
+    let gh: Awaited<ReturnType<typeof githubVerifiedEmail>>;
+    try {
+      gh = await githubVerifiedEmail(body.githubToken, id.githubId);
+    } catch (err) {
+      if (err instanceof NoVerifiedEmailError) throw badRequest("Your GitHub account has no verified email. Verify one at github.com/settings/emails, then try again.");
+      logger.warn({ err: (err as Error).message }, "github email lookup failed");
+      throw unauthorized("GitHub sign-in failed. Please try again.");
+    }
+    const user = await signInWithIdentity(req, res, { provider: "github", subject: id.githubId, email: gh.email, name: id.name || gh.name || gh.login, ref: body.ref });
+    return void res.json({ user: publicUser(user.toObject() as never) });
+  }
+
+  throw unauthorized("Please use “Continue with Google” or “Continue with GitHub”.");
 });
 
 const googleClient = env.GOOGLE_CLIENT_ID ? new OAuth2Client(env.GOOGLE_CLIENT_ID) : null;
@@ -238,7 +263,7 @@ authRouter.post("/google", async (req, res) => {
   const p = ticket?.getPayload();
   if (!p?.email || !p.sub) throw unauthorized("Google sign-in failed");
   if (!p.email_verified) throw unauthorized("Your Google email isn't verified");
-  const user = await signInWithGoogleAccount(req, res, { googleSub: p.sub, email: p.email, name: p.name, ref: body.ref });
+  const user = await signInWithIdentity(req, res, { provider: "google", subject: p.sub, email: p.email, name: p.name, ref: body.ref });
   res.json({ user: publicUser(user.toObject() as never) });
 });
 

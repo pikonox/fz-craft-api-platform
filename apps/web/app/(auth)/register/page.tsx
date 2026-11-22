@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Gift, KeyRound, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/primitives";
-import { GoogleButton } from "@/components/auth/google-button";
+import { SocialSignIn } from "@/components/auth/social-sign-in";
 import { api, errorMessage } from "@/lib/api";
 import { useMounted } from "@/lib/hooks";
 
@@ -42,7 +42,7 @@ function RegisterForm() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">One click with your Google account. Free tier included.</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">One click with Google or GitHub. Free tier included.</p>
       {ref && (
         <p className="mt-4 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent-soft px-3 py-2 text-[13px]">
           <Gift className="size-4 text-accent" /> Invited with code <b className="font-mono">{ref}</b>
@@ -50,7 +50,7 @@ function RegisterForm() {
       )}
 
       <div className="mt-7">
-        <GoogleButton referral={ref || undefined} />
+        <SocialSignIn referral={ref || undefined} />
         <ul className="mt-6 space-y-2.5">
           {PERKS.map((p) => (
             <li key={p.text} className="flex items-center gap-2.5 text-[13.5px] text-muted-foreground">

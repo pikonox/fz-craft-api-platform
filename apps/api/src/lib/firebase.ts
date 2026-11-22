@@ -13,6 +13,8 @@ export type FirebaseIdentity = {
   provider: string | null;
   /** The Google account id (same value Google Identity Services calls `sub`) */
   googleSub: string | null;
+  /** The GitHub numeric user id, as a string */
+  githubId: string | null;
 };
 
 /**
@@ -30,6 +32,7 @@ export async function verifyFirebaseIdToken(token: string, projectId: string, ke
   if (!payload.sub || !authTime || authTime > Date.now() / 1000 + 60) throw new Error("Invalid Firebase token");
   const fb = (payload.firebase ?? {}) as { sign_in_provider?: string; identities?: Record<string, unknown[]> };
   const google = fb.identities?.["google.com"]?.[0];
+  const github = fb.identities?.["github.com"]?.[0];
   return {
     uid: payload.sub,
     email: typeof payload.email === "string" ? payload.email.toLowerCase() : null,
@@ -37,5 +40,6 @@ export async function verifyFirebaseIdToken(token: string, projectId: string, ke
     name: typeof payload.name === "string" ? payload.name : null,
     provider: fb.sign_in_provider ?? null,
     googleSub: typeof google === "string" ? google : null,
+    githubId: typeof github === "string" || typeof github === "number" ? String(github) : null,
   };
 }

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/primitives";
-import { GoogleButton } from "@/components/auth/google-button";
+import { SocialSignIn } from "@/components/auth/social-sign-in";
 import { api, errorMessage } from "@/lib/api";
 
 function LoginForm() {
@@ -56,11 +56,9 @@ function LoginForm() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">{need2fa ? "Two-factor authentication" : "Welcome back"}</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">
-        {need2fa ? "Enter the 6-digit code from your authenticator app." : "Sign in to your dashboard with your Google account."}
-      </p>
+      <p className="mt-1.5 text-sm text-muted-foreground">{need2fa ? "Enter the 6-digit code from your authenticator app." : "Sign in to your dashboard with Google or GitHub."}</p>
       <div className="mt-8">
-        {!need2fa && <GoogleButton next={next} />}
+        {!need2fa && <SocialSignIn next={next} />}
         {/* A native <details> so the password form also opens when the page's scripts don't run */}
         <details open={withEmail || need2fa} className="group mt-5">
           {!need2fa && (
@@ -144,7 +142,7 @@ function LoginForm() {
         <p className="mt-6 text-center text-sm text-muted-foreground">
           New here?{" "}
           <Link href="/register" className="font-medium text-foreground hover:underline">
-            Create an account with Google
+            Create an account
           </Link>
         </p>
       </div>

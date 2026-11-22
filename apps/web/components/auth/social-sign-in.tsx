@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Copy, Check } from "lucide-react";
+import { AlertTriangle, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { api, errorMessage } from "@/lib/api";
-import { firebaseConfigured, firebaseErrorMessage, googleIdToken, inAppBrowser, isCancelled, loadFirebase } from "@/lib/firebase";
+import { firebaseConfigured, firebaseErrorMessage, inAppBrowser, isCancelled, loadFirebase, socialSignIn, type SocialProvider } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
 function GoogleG({ className }: { className?: string }) {
@@ -23,29 +23,42 @@ function GoogleG({ className }: { className?: string }) {
   );
 }
 
-/** "Continue with Google" (Firebase Auth). The only way to create an account. */
-export function GoogleButton({ next = "/dashboard", referral, className }: { next?: string; referral?: string; className?: string }) {
+function GitHubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
+    </svg>
+  );
+}
+
+const PROVIDERS: { id: SocialProvider; label: string }[] = [
+  { id: "google", label: "Continue with Google" },
+  { id: "github", label: "Continue with GitHub" },
+];
+
+/** "Continue with Google" and "Continue with GitHub" (Firebase Auth): the only ways to create an account. */
+export function SocialSignIn({ next = "/dashboard", referral, className }: { next?: string; referral?: string; className?: string }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<SocialProvider | null>(null);
   const [app, setApp] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setApp(inAppBrowser(navigator.userAgent));
-    // Load the SDK now so the click opens Google's window immediately (browsers block late pop-ups)
+    // Load the SDK now so the click opens the sign-in window immediately (browsers block late pop-ups)
     if (firebaseConfigured) loadFirebase().catch(() => {});
   }, []);
 
-  const signIn = async () => {
-    setBusy(true);
+  const signIn = async (which: SocialProvider) => {
+    setBusy(which);
     try {
-      const idToken = await googleIdToken();
+      const { idToken, githubToken } = await socialSignIn(which);
       // New accounts can start from the login page too: keep an invite code saved earlier
       let ref = referral;
       try {
         ref ||= localStorage.getItem("ref") || undefined;
       } catch {}
-      await api("/api/auth/firebase", { body: { idToken, ref } });
+      await api("/api/auth/firebase", { body: { idToken, githubToken, ref } });
       try {
         localStorage.removeItem("ref");
       } catch {}
@@ -53,11 +66,11 @@ export function GoogleButton({ next = "/dashboard", referral, className }: { nex
     } catch (e) {
       const code = (e as { code?: string })?.code ?? "";
       if (code.startsWith("auth/")) {
-        if (!isCancelled(code)) toast.error(firebaseErrorMessage(code));
+        if (!isCancelled(code)) toast.error(firebaseErrorMessage(code, which));
       } else {
         toast.error(errorMessage(e));
       }
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -77,7 +90,7 @@ export function GoogleButton({ next = "/dashboard", referral, className }: { nex
         <div className="rounded-xl border border-warning/30 bg-warning-soft px-3.5 py-3 text-[13px] text-warning">
           <p className="flex items-start gap-2 font-medium">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            Google doesn&apos;t allow sign-in inside {app}&apos;s built-in browser.
+            Sign-in doesn&apos;t work inside {app}&apos;s built-in browser.
           </p>
           <p className="mt-1 pl-6 text-foreground/80">
             Tap <b>⋯</b> (or the share icon) and choose <b>Open in browser</b>, or copy this link into Chrome or Safari.
@@ -87,19 +100,25 @@ export function GoogleButton({ next = "/dashboard", referral, className }: { nex
           </Button>
         </div>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        className="w-full gap-3 bg-card text-[15px] font-medium shadow-sm hover:bg-muted"
-        onClick={signIn}
-        loading={busy}
-        disabled={!firebaseConfigured || busy}
-      >
-        {!busy && <GoogleG className="size-5" />}
-        Continue with Google
-      </Button>
-      {!firebaseConfigured && <p className="text-center text-xs text-muted-foreground">Google sign-in isn&apos;t set up on this server yet (FIREBASE_* in .env).</p>}
+      {PROVIDERS.map((p) => (
+        <Button
+          key={p.id}
+          type="button"
+          variant="outline"
+          size="lg"
+          className={cn(
+            "w-full gap-3 text-[15px] font-medium shadow-sm",
+            p.id === "github" ? "border-transparent bg-[#24292f] text-white hover:bg-[#32383f] dark:bg-white dark:text-[#24292f] dark:hover:bg-zinc-200" : "bg-card hover:bg-muted",
+          )}
+          onClick={() => signIn(p.id)}
+          loading={busy === p.id}
+          disabled={!firebaseConfigured || busy !== null}
+        >
+          {busy !== p.id && (p.id === "google" ? <GoogleG className="size-5" /> : <GitHubMark className="size-5" />)}
+          {p.label}
+        </Button>
+      ))}
+      {!firebaseConfigured && <p className="text-center text-xs text-muted-foreground">Sign-in isn&apos;t set up on this server yet (FIREBASE_* in .env).</p>}
     </div>
   );
 }

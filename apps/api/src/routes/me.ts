@@ -193,6 +193,7 @@ meRouter.post("/delete", async (req, res) => {
     phone: "",
     passwordHash: undefined,
     googleId: undefined,
+    githubId: undefined,
     telegram: {},
     twoFactor: { enabled: false },
   });

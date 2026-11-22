@@ -17,6 +17,7 @@ export type User = {
   twoFactorEnabled: boolean;
   hasPassword: boolean;
   googleLinked: boolean;
+  githubLinked?: boolean;
   createdAt: string;
 };
 

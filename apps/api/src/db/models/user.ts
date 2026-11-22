@@ -7,6 +7,8 @@ const userSchema = new Schema(
     phone: { type: String, trim: true, default: "" },
     passwordHash: { type: String },
     googleId: { type: String },
+    /** GitHub numeric user id (as a string), when they sign in with GitHub */
+    githubId: { type: String },
     role: { type: String, enum: ["user", "admin"], default: "user" },
     status: { type: String, enum: ["active", "banned", "deleted"], default: "active" },
     emailVerified: { type: Boolean, default: false },
@@ -49,6 +51,7 @@ const userSchema = new Schema(
 );
 
 userSchema.index({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: { $type: "string" } } });
+userSchema.index({ githubId: 1 }, { unique: true, partialFilterExpression: { githubId: { $type: "string" } } });
 userSchema.index({ "telegram.id": 1 }, { unique: true, partialFilterExpression: { "telegram.id": { $type: "string" } } });
 userSchema.index({ "telegram.linkToken": 1 }, { sparse: true });
 userSchema.index({ createdAt: -1 });

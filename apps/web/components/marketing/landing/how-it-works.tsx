@@ -21,7 +21,7 @@ const REPLY = "Hello! How can I help today?";
 const FIRST_TOKEN_SECONDS = 47;
 
 const STEPS = [
-  { icon: UserPlus, title: "Create a free account", body: "One click with your Google account. The free plan includes a monthly token allowance and the free models — no payment details." },
+  { icon: UserPlus, title: "Create a free account", body: "One click with Google or GitHub. The free plan includes a monthly token allowance and the free models — no payment details." },
   { icon: KeyRound, title: "Create an API key", body: "Name it, choose scopes and optional limits. The key is shown once — store it as a secret." },
   { icon: Zap, title: "Point your SDK at us", body: "Set the base URL and key in any OpenAI or Anthropic SDK, framework or tool. Your existing code keeps working." },
 ];

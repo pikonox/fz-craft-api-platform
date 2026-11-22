@@ -48,6 +48,7 @@ export function publicUser(u: UserLean) {
     twoFactorEnabled: Boolean(u.twoFactor?.enabled),
     hasPassword: Boolean(u.passwordHash),
     googleLinked: Boolean(u.googleId),
+    githubLinked: Boolean(u.githubId),
     createdAt: u.createdAt,
   };
 }

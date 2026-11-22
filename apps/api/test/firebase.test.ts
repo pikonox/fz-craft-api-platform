@@ -32,7 +32,7 @@ describe("Firebase ID token check", () => {
   it("accepts a valid Google sign-in and reads the Google account id", async () => {
     const { keys, sign } = await setup();
     const id = await verifyFirebaseIdToken(await sign(), PROJECT, keys);
-    expect(id).toEqual({ uid: "firebase-uid-1", email: "ali@example.com", emailVerified: true, name: "Ali", provider: "google.com", googleSub: "1234567890" });
+    expect(id).toEqual({ uid: "firebase-uid-1", email: "ali@example.com", emailVerified: true, name: "Ali", provider: "google.com", googleSub: "1234567890", githubId: null });
   });
 
   it("rejects a token for another Firebase project", async () => {
@@ -55,6 +55,12 @@ describe("Firebase ID token check", () => {
   it("rejects a sign-in time in the future", async () => {
     const { keys, sign, now } = await setup();
     await expect(verifyFirebaseIdToken(await sign({ auth_time: now + 3600 }), PROJECT, keys)).rejects.toThrow();
+  });
+
+  it("reads the GitHub account id from a GitHub sign-in", async () => {
+    const { keys, sign } = await setup();
+    const id = await verifyFirebaseIdToken(await sign({ email_verified: false, firebase: { sign_in_provider: "github.com", identities: { "github.com": ["583231"] } } }), PROJECT, keys);
+    expect(id).toMatchObject({ provider: "github.com", githubId: "583231", googleSub: null, emailVerified: false });
   });
 
   it("reports other sign-in methods so the route can refuse them", async () => {

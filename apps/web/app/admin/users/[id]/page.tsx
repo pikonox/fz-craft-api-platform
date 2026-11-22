@@ -152,7 +152,7 @@ export default function AdminUserPage() {
                 <KV label="Joined">{formatDateTime(u.createdAt)}</KV>
                 <KV label="Last login">{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : "Never"}</KV>
                 <KV label="Telegram">{u.telegram.verified ? `@${u.telegram.username}${u.telegramId ? ` · ${u.telegramId}` : ""}` : "Not linked"}</KV>
-                <KV label="Sign-in">{[u.hasPassword && "Password", u.googleLinked && "Google", u.twoFactorEnabled && "2FA"].filter(Boolean).join(" · ") || "—"}</KV>
+                <KV label="Sign-in">{[u.hasPassword && "Password", u.googleLinked && "Google", u.githubLinked && "GitHub", u.twoFactorEnabled && "2FA"].filter(Boolean).join(" · ") || "—"}</KV>
               </>
             )}
           </CardBody>
