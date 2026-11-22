@@ -18,8 +18,8 @@ const LINKS: { href: string; label: string; mobileLabel?: string; badge?: string
   { href: "/#vscode", label: "VS Code", mobileLabel: "VS Code extension", badge: "New" },
 ];
 
-function NewBadge({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-accent">{children}</span>;
+function NewBadge({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <span className={cn("rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-accent", className)}>{children}</span>;
 }
 
 function ThemeToggle({ className }: { className?: string }) {
@@ -72,13 +72,13 @@ export function MarketingHeader() {
               key={l.href}
               href={l.href}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13.5px] font-medium transition-colors hover:bg-muted hover:text-foreground",
+                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13.5px] font-medium transition-colors hover:bg-muted hover:text-foreground",
                 isActive(l.href) ? "text-foreground" : "text-muted-foreground",
               )}
               aria-current={isActive(l.href) ? "page" : undefined}
             >
               {l.label}
-              {l.badge && <NewBadge>{l.badge}</NewBadge>}
+              {l.badge && <NewBadge className="hidden lg:inline">{l.badge}</NewBadge>}
             </Link>
           ))}
         </nav>

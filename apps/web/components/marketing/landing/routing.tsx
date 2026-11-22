@@ -89,6 +89,7 @@ export function RoutingDiagram() {
     if (!root || !c || root.clientWidth < 960) return setPaths(null);
     const r = root.getBoundingClientRect();
     const cb = c.getBoundingClientRect();
+    if (!cb.width) return setPaths(null); // the large-screen layout is hidden
     const at = (n: number, i: number, from: number, to: number) => cb.top - r.top + cb.height * (n === 1 ? 0.5 : from + ((to - from) * i) / (n - 1));
     const left = TOOLS.map((_, i) => {
       const b = leftRefs.current[i]?.getBoundingClientRect();
@@ -111,17 +112,54 @@ export function RoutingDiagram() {
   }, [measure]);
 
   const active = rows[target];
+  const card_ = { step, toolName: TOOLS[tool].name, modelId: active?.id, latency, tokens, total };
 
   return (
     <div ref={wrap} className="relative">
       <style>{`
         @keyframes fz-in { from { opacity: 0; transform: translateY(3px) } to { opacity: 1; transform: none } }
         @keyframes fz-draw { from { stroke-dashoffset: 1 } to { stroke-dashoffset: 0 } }
+        @keyframes fz-fill { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+        @keyframes fz-drop { 0% { opacity: 0; transform: translateY(0) } 15% { opacity: 1 } 100% { opacity: 1; transform: translateY(calc(var(--fz-len) - 8px)) } }
         .fz-in { animation: fz-in .35s ease-out both }
         .fz-draw { stroke-dasharray: 1; animation: fz-draw .8s cubic-bezier(.4,0,.2,1) both }
+        .fz-fill { transform-origin: top; animation: fz-fill .8s cubic-bezier(.4,0,.2,1) both }
+        .fz-drop { animation: fz-drop .8s cubic-bezier(.4,0,.2,1) both }
       `}</style>
 
-      {/* Connectors (large screens) */}
+      {/* ── Phones and tablets: tools → gateway → model, top to bottom ── */}
+      <div className="mx-auto flex max-w-xl flex-col items-center lg:hidden">
+        <IconRow items={TOOLS.map((t) => ({ key: t.id, label: t.name, vendor: t.id }))} active={tool} tone="accent" />
+        <p className="mt-3 text-[12.5px] text-muted-foreground">
+          Request from{" "}
+          <span key={`mt${step}`} className="fz-in inline-block font-medium text-foreground">
+            {TOOLS[tool].name}
+          </span>
+        </p>
+
+        <DropLine step={step} animate={animate} color="var(--accent)" />
+        <GatewayCard {...card_} className="w-full" />
+        <DropLine step={step} animate={animate} color="var(--success)" delay="0.85s" />
+
+        <IconRow items={rows.map((m) => ({ key: m.id, label: m.name, vendor: m.vendor, modelId: m.id }))} active={target} tone="success" />
+        {active && (
+          <div className="relative mt-3 flex h-12 w-full items-center gap-2.5 rounded-xl border border-success/60 bg-card pl-2 pr-3.5 shadow-sm ring-4 ring-success/15">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground">
+              <VendorLogo vendor={active.vendor} modelId={active.id} className="size-4.5" />
+            </span>
+            <span key={`mn${step}`} className="fz-in min-w-0 flex-1 truncate text-[14px] font-medium">
+              {active.name}
+            </span>
+            <span className="shrink-0 font-mono text-[12px] text-muted-foreground">{formatTokenPrice(active.price)}</span>
+            <span key={`mb${step}`} className="fz-in absolute -top-2.5 right-3 rounded-full bg-success px-2 py-0.5 font-mono text-[10.5px] font-semibold text-white shadow-sm" style={{ animationDelay: "1.5s" }}>
+              200 · {latency}ms
+            </span>
+          </div>
+        )}
+        <p className="mt-2.5 text-[11.5px] text-subtle-foreground">Price per 1M input tokens</p>
+      </div>
+
+      {/* ── Large screens: three columns joined by measured curves ── */}
       {paths && (
         <svg className="pointer-events-none absolute inset-0 hidden lg:block" width={paths.w} height={paths.h} aria-hidden>
           <defs>
@@ -170,9 +208,9 @@ export function RoutingDiagram() {
         </svg>
       )}
 
-      <div className="relative grid items-center gap-8 lg:grid-cols-[200px_minmax(0,1fr)_minmax(0,290px)] lg:gap-20 xl:gap-24">
+      <div className="relative hidden items-center lg:grid lg:grid-cols-[200px_minmax(0,1fr)_minmax(0,290px)] lg:gap-20 xl:gap-24">
         {/* Tools */}
-        <div className="flex flex-wrap justify-center gap-2.5 lg:flex-col lg:items-end lg:gap-4">
+        <div className="flex flex-col items-end gap-4">
           {TOOLS.map((t, i) => (
             <div
               key={t.id}
@@ -192,52 +230,10 @@ export function RoutingDiagram() {
           ))}
         </div>
 
-        {/* Gateway card */}
-        <div className="relative">
-          <div className="pointer-events-none absolute -inset-10 rounded-[40px] bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--accent)_22%,transparent),transparent)] blur-2xl" aria-hidden />
-          <div ref={card} className="relative rounded-3xl border border-border bg-card/95 p-5 shadow-xl shadow-black/5 backdrop-blur sm:p-6 dark:shadow-black/40">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <BrandLogo className="h-10" />
-                <p className="mt-1.5 truncate font-mono text-[12.5px] text-muted-foreground">{HOST}</p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-[12px] font-medium text-success">
-                <span className="size-1.5 animate-pulse rounded-full bg-success" /> Live
-              </span>
-            </div>
-
-            <div className="mt-5 rounded-2xl bg-[#0b0b10] p-4 font-mono text-[13px] leading-[1.9] text-zinc-300 ring-1 ring-white/5 sm:p-5">
-              <p>
-                <span className="font-semibold text-violet-400">POST</span> <span className="text-zinc-100">/v1/chat/completions</span>
-              </p>
-              <p key={`f${step}`} className="fz-in flex gap-4">
-                <span className="w-12 text-zinc-500">from</span>
-                <span className="text-zinc-100">{TOOLS[tool].name}</span>
-              </p>
-              <p key={`m${step}`} className="fz-in flex gap-4" style={{ animationDelay: "0.25s" }}>
-                <span className="w-12 text-zinc-500">model</span>
-                <span className="truncate text-sky-300">{active?.id}</span>
-              </p>
-              <p key={`s${step}`} className="fz-in flex gap-4" style={{ animationDelay: "1.5s" }}>
-                <span className="w-12 text-zinc-500">reply</span>
-                <span className="text-emerald-400">
-                  200 OK · {latency}ms · {tokens.toLocaleString()} tokens
-                </span>
-              </p>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {["One key", total ? `${total} models` : "30+ models", "OpenAI + Anthropic API", "Automatic failover"].map((c) => (
-                <span key={c} className="rounded-lg border border-border bg-muted/50 px-2.5 py-1 text-[12.5px] text-muted-foreground">
-                  {c}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        <GatewayCard {...card_} cardRef={card} />
 
         {/* Models */}
-        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1 lg:gap-3">
+        <div className="grid gap-3">
           {rows.map((m, i) => (
             <div
               key={m.id}
@@ -261,9 +257,110 @@ export function RoutingDiagram() {
               )}
             </div>
           ))}
-          <p className="text-center text-[11.5px] text-subtle-foreground lg:text-right">Price per 1M input tokens</p>
+          <p className="text-right text-[11.5px] text-subtle-foreground">Price per 1M input tokens</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** The FZ-craft card in the middle: the request currently being routed. */
+function GatewayCard({
+  step,
+  toolName,
+  modelId,
+  latency,
+  tokens,
+  total,
+  cardRef,
+  className,
+}: {
+  step: number;
+  toolName: string;
+  modelId?: string;
+  latency: number;
+  tokens: number;
+  total: number;
+  cardRef?: React.Ref<HTMLDivElement>;
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      <div className="pointer-events-none absolute -inset-10 rounded-[40px] bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--accent)_22%,transparent),transparent)] blur-2xl" aria-hidden />
+      <div ref={cardRef} className="relative rounded-3xl border border-border bg-card/95 p-4 shadow-xl shadow-black/5 backdrop-blur sm:p-6 dark:shadow-black/40">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <BrandLogo className="h-8 sm:h-10" />
+            <p className="mt-1.5 truncate font-mono text-[12px] text-muted-foreground sm:text-[12.5px]">{HOST}</p>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-[12px] font-medium text-success">
+            <span className="size-1.5 animate-pulse rounded-full bg-success" /> Live
+          </span>
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-[#0b0b10] p-3.5 font-mono text-[12px] leading-[1.9] text-zinc-300 ring-1 ring-white/5 sm:mt-5 sm:p-5 sm:text-[13px]">
+          <p className="truncate">
+            <span className="font-semibold text-violet-400">POST</span> <span className="text-zinc-100">/v1/chat/completions</span>
+          </p>
+          <p key={`f${step}`} className="fz-in flex gap-3 sm:gap-4">
+            <span className="w-11 shrink-0 text-zinc-500 sm:w-12">from</span>
+            <span className="truncate text-zinc-100">{toolName}</span>
+          </p>
+          <p key={`m${step}`} className="fz-in flex gap-3 sm:gap-4" style={{ animationDelay: "0.25s" }}>
+            <span className="w-11 shrink-0 text-zinc-500 sm:w-12">model</span>
+            <span className="truncate text-sky-300">{modelId}</span>
+          </p>
+          <p key={`s${step}`} className="fz-in flex gap-3 sm:gap-4" style={{ animationDelay: "1.5s" }}>
+            <span className="w-11 shrink-0 text-zinc-500 sm:w-12">reply</span>
+            <span className="min-w-0 text-emerald-400">
+              200 OK · {latency}ms · {tokens.toLocaleString()} tokens
+            </span>
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-1.5 sm:gap-2">
+          {["One key", total ? `${total} models` : "30+ models", "OpenAI + Anthropic API", "Automatic failover"].map((c) => (
+            <span key={c} className="rounded-lg border border-border bg-muted/50 px-2 py-0.5 text-[12px] text-muted-foreground sm:px-2.5 sm:py-1 sm:text-[12.5px]">
+              {c}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A row of square logo tiles; the active one is lit up. Columns shrink to fit any phone width. */
+function IconRow({ items, active, tone }: { items: { key: string; label: string; vendor: string; modelId?: string }[]; active: number; tone: "accent" | "success" }) {
+  return (
+    <ul className="grid w-full max-w-[380px] gap-1.5 sm:gap-2" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+      {items.map((it, i) => (
+        <li
+          key={it.key}
+          title={it.label}
+          className={cn(
+            "flex aspect-square items-center justify-center rounded-xl border bg-card shadow-sm transition-all duration-300",
+            i === active
+              ? tone === "accent"
+                ? "scale-110 border-accent/60 ring-4 ring-accent/15"
+                : "scale-110 border-success/60 ring-4 ring-success/15"
+              : "border-border opacity-60",
+          )}
+        >
+          <VendorLogo vendor={it.vendor} modelId={it.modelId} className="size-4.5" />
+          <span className="sr-only">{it.label}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Vertical connector: the line fills top to bottom while a dot travels down it. */
+function DropLine({ step, animate, color, delay }: { step: number; animate: boolean; color: string; delay?: string }) {
+  return (
+    <div className="relative my-1 h-11 w-px bg-border-strong [--fz-len:2.75rem]" aria-hidden>
+      <div key={`fill${step}`} className={cn("absolute inset-0", animate && "fz-fill")} style={{ background: color, animationDelay: delay }} />
+      {animate && <span key={`dot${step}`} className="fz-drop absolute -left-[3.5px] top-0 size-2 rounded-full" style={{ background: color, animationDelay: delay, boxShadow: `0 0 0 4px color-mix(in oklab, ${color} 20%, transparent)` }} />}
     </div>
   );
 }

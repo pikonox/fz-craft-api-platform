@@ -74,7 +74,7 @@ export function HowItWorksDemo() {
         @media (prefers-reduced-motion: reduce) { .hiw-pop, .hiw-caret, .hiw-glow { animation: none } }
       `}</style>
 
-      <ol ref={ref} className="relative grid gap-4 md:grid-cols-3">
+      <ol ref={ref} className="relative grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
         {/* Connector with a fill that follows the active step */}
         <div className="pointer-events-none absolute left-[16%] right-[16%] top-[42px] hidden h-px bg-border-strong md:block" aria-hidden>
           <div className="h-full bg-linear-to-r from-violet-500 to-sky-400 transition-[width] duration-700 ease-out" style={{ width: `${progress}%` }} />
@@ -87,7 +87,7 @@ export function HowItWorksDemo() {
             <li
               key={s.title}
               className={cn(
-                "relative flex flex-col rounded-2xl border bg-card p-6 transition-[border-color,box-shadow,transform] duration-500",
+                "relative flex min-w-0 flex-col rounded-2xl border bg-card p-5 transition-[border-color,box-shadow,transform] duration-500 sm:p-6",
                 active ? "-translate-y-1 border-accent/40 shadow-xl shadow-accent/10" : "border-border",
               )}
             >
@@ -123,7 +123,7 @@ export function HowItWorksDemo() {
                         {on && step === 0 && !email.done && <Caret />}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span
                         className={cn(
                           "rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-all duration-200",
