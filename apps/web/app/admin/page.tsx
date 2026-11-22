@@ -11,6 +11,7 @@ import { Segmented } from "@/components/ui/controls";
 import { Legend, RankedBars, TimeSeriesChart, usePalette, type Series } from "@/components/charts";
 import { StatTile } from "@/components/dashboard/stat";
 import { useAdminStats } from "@/components/admin/queries";
+import { UpstreamPoolCard } from "@/components/admin/upstream-pool";
 import { Table, TD } from "@/components/admin/ui";
 import type { AdminBreakdownRow } from "@/components/admin/types";
 import { api } from "@/lib/api";
@@ -101,6 +102,8 @@ export default function AdminOverviewPage() {
           <StatTile label="Open tickets" loading={isLoading} value={formatNumber(data?.openTickets ?? 0)} sub={data ? (data.openTickets ? "Users waiting for a reply" : "No open tickets") : undefined} className="h-full" />
         </LinkTile>
       </div>
+
+      <UpstreamPoolCard />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

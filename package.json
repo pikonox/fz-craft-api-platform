@@ -11,6 +11,7 @@
     "typecheck": "turbo run typecheck",
     "test": "pnpm --filter @nova/api test",
     "seed": "pnpm --filter @nova/api seed",
+    "calibrate": "pnpm --filter @nova/api calibrate",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down"
   },

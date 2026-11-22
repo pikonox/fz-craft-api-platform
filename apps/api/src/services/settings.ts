@@ -24,6 +24,40 @@ export const QUICK_REPLY_DEFAULTS: QuickReplySettings = {
   thanks: ["You're welcome! 😊 Let me know if there's anything else I can help with.", "Happy to help! Is there anything else you'd like to do?"],
 };
 
+/**
+ * The shared upstream account every paid model is served from (FreeModel.in). It has no usage API,
+ * so we count what we send it and warn the admins before its plan or image balance runs out.
+ */
+export type UpstreamPoolSettings = {
+  /** Provider slug to watch ("upstream" = the UPSTREAM_* provider from .env) */
+  providerSlug: string;
+  /** Tokens in the upstream plan per period; 0 = don't track tokens */
+  tokens: number;
+  /** Day the upstream plan's current period started (YYYY-MM-DD); "" = don't track tokens */
+  periodStart: string;
+  /** Period length; later periods roll forward automatically */
+  periodDays: number;
+  /** Upstream balance available for images, in micro-USD; 0 = don't track images */
+  imageBudgetMicros: number;
+  /** Day that balance was entered or topped up (YYYY-MM-DD); images are counted from then */
+  imageBudgetSince: string;
+  /** What the upstream charges per image, in micro-USD */
+  imageCostMicros: number;
+  /** Warn at this % used (and again at 100%) */
+  alertPercent: number;
+};
+
+export const UPSTREAM_POOL_DEFAULTS: UpstreamPoolSettings = {
+  providerSlug: "upstream",
+  tokens: 0,
+  periodStart: "",
+  periodDays: 30,
+  imageBudgetMicros: 0,
+  imageBudgetSince: "",
+  imageCostMicros: 1_800,
+  alertPercent: 80,
+};
+
 /** Admin-editable runtime settings with defaults. */
 export const SETTING_DEFAULTS = {
   pkrPerUsd: 280,
@@ -39,6 +73,14 @@ export const SETTING_DEFAULTS = {
   supportEmail: "support@example.com",
   announcement: "",
   quickReplies: QUICK_REPLY_DEFAULTS,
+  /** Emails to the admins: a sale on every plan/pass purchase or renewal, and upstream warnings. */
+  adminAlerts: {
+    /** Where alerts go; "" = every admin account's own email */
+    email: "",
+    sales: true,
+    upstream: true,
+  },
+  upstreamPool: UPSTREAM_POOL_DEFAULTS,
 };
 export type Settings = typeof SETTING_DEFAULTS;
 export type SettingKey = keyof Settings;
@@ -54,7 +96,11 @@ function load(): Promise<Settings> {
       .then((rows) => {
         const value = { ...SETTING_DEFAULTS } as Settings;
         for (const r of rows) {
-          if (r.key in value) (value as Record<string, unknown>)[r.key] = r.value;
+          if (!(r.key in value)) continue;
+          const def = (SETTING_DEFAULTS as Record<string, unknown>)[r.key];
+          // Objects saved before a field was added still get that field's default
+          const isObj = (v: unknown) => typeof v === "object" && v !== null && !Array.isArray(v);
+          (value as Record<string, unknown>)[r.key] = isObj(def) && isObj(r.value) ? { ...(def as object), ...(r.value as object) } : r.value;
         }
         cache = { at: Date.now(), value };
         return value;

@@ -8,6 +8,7 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "seed": "tsx src/scripts/seed.ts",
+    "calibrate": "tsx src/scripts/calibrate.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

@@ -1,5 +1,6 @@
 import { ProviderKey, type ModelLean, type ProviderLean } from "../db/models";
 import { logger } from "../lib/logger";
+import { upstreamFailed } from "../services/adminAlerts";
 import { GatewayError } from "./errors";
 import { health, registry, type PoolKey } from "./registry";
 
@@ -87,6 +88,7 @@ export function markFailure(c: Candidate, status: number, message: string) {
   const cooldownUntil = Date.now() + cooldown;
   health.set(c.key.id, { failStreak, cooldownUntil });
   logger.warn({ provider: c.provider.name, key: c.key.label || c.key.id, status, cooldownMs: cooldown }, `upstream failure: ${message.slice(0, 200)}`);
+  upstreamFailed(c.provider, status, message);
   ProviderKey.updateOne(
     { _id: c.key.id },
     {

@@ -11,7 +11,8 @@ const transport = env.SMTP_HOST
     })
   : null;
 
-function layout(title: string, body: string) {
+/** The full HTML of an email (also used to preview emails). */
+export function layout(title: string, body: string) {
   return `<!doctype html><html><body style="margin:0;background:#0b0b0f;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#e4e4e7">
   <div style="max-width:520px;margin:0 auto;padding:40px 24px">
     <div style="font-weight:700;font-size:18px;margin-bottom:24px;color:#fff">${env.BRAND_NAME}</div>
@@ -23,15 +24,18 @@ function layout(title: string, body: string) {
   </div></body></html>`;
 }
 
-export async function sendMail(to: string, subject: string, title: string, bodyHtml: string) {
+/** Never throws. "logged" = no SMTP is configured, so the email was printed to the log instead. */
+export async function sendMail(to: string, subject: string, title: string, bodyHtml: string): Promise<"sent" | "logged" | "failed"> {
   if (!transport) {
     logger.info({ to, subject }, `📧 [dev mail] ${title}: ${bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}`);
-    return;
+    return "logged";
   }
   try {
     await transport.sendMail({ from: env.MAIL_FROM, to, subject, html: layout(title, bodyHtml) });
+    return "sent";
   } catch (err) {
     logger.error({ err, to, subject }, "Failed to send email");
+    return "failed";
   }
 }
 

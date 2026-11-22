@@ -158,6 +158,33 @@ export type AdminSettings = {
   supportEmail: string;
   announcement: string;
   quickReplies: QuickReplies;
+  adminAlerts: AdminAlerts;
+  upstreamPool: UpstreamPoolSettings;
+};
+
+/** Who gets admin emails ("" = every admin account's email) and which ones are sent. */
+export type AdminAlerts = { email: string; sales: boolean; upstream: boolean };
+
+/** The shared upstream account (FreeModel) all paid models are served from. Micros = USD × 1,000,000. */
+export type UpstreamPoolSettings = {
+  providerSlug: string;
+  tokens: number;
+  periodStart: string;
+  periodDays: number;
+  imageBudgetMicros: number;
+  imageBudgetSince: string;
+  imageCostMicros: number;
+  alertPercent: number;
+};
+
+export type UpstreamPoolStatus = {
+  settings: UpstreamPoolSettings;
+  provider: { id: string; name: string; slug: string } | null;
+  providers: { slug: string; name: string }[];
+  tokens: { used: number; limit: number; pct: number; requests: number; windowStart: string; windowEnd: string; runsOutAt: string | null } | null;
+  images: { count: number; spentMicros: number; budgetMicros: number; pct: number; since: string } | null;
+  sold: { tokens: number; plans: number; passes: number };
+  keyProblem: { message: string; at: string; coolingDown: boolean } | null;
 };
 
 export type QuickIntent = "greeting" | "salam" | "howAreYou" | "identity" | "thanks";

@@ -37,6 +37,7 @@ import { creditWallet, debitWallet, ensureFreeSubscription, getEntitlement, gran
 import { entitlementSummary, publicUser } from "../services/users";
 import { fulfillPayment, rejectPayment, serializePayment } from "../services/payments";
 import { getSettings, updateSettings, SETTING_DEFAULTS } from "../services/settings";
+import { poolStatus, sendTestAlert } from "../services/adminAlerts";
 import { fileUrl, newKey, putFile } from "../services/storage";
 import { notify } from "../services/notify";
 import { breakdown, parseRange, summary, timeseries } from "../services/analytics";
@@ -638,6 +639,19 @@ adminRouter.patch("/settings", async (req, res) => {
       imageDefaultModel: z.string().max(100).optional(),
       supportEmail: z.string().max(200).optional(),
       announcement: z.string().max(500).optional(),
+      adminAlerts: z.object({ email: z.string().trim().max(500), sales: z.boolean(), upstream: z.boolean() }).optional(),
+      upstreamPool: z
+        .object({
+          providerSlug: z.string().trim().min(1).max(60),
+          tokens: z.number().int().min(0).max(1_000_000_000_000),
+          periodStart: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]),
+          periodDays: z.number().int().min(1).max(366),
+          imageBudgetMicros: z.number().int().min(0).max(1_000_000_000_000),
+          imageBudgetSince: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]),
+          imageCostMicros: z.number().int().min(0).max(1_000_000_000),
+          alertPercent: z.number().int().min(1).max(99),
+        })
+        .optional(),
       quickReplies: z
         .object({
           enabled: z.boolean(),
@@ -653,6 +667,20 @@ adminRouter.patch("/settings", async (req, res) => {
   const settings = await updateSettings(body);
   await audit(req, "settings.update", "settings", "-", body);
   res.json({ settings });
+});
+
+// ── Upstream pool & admin alerts ────────────────────────
+/** Usage of the shared upstream account (FreeModel) this period, as we counted it. */
+adminRouter.get("/upstream-pool", async (_req, res) => {
+  const [status, providers] = await Promise.all([poolStatus(), Provider.find().select("name slug").sort({ name: 1 }).lean()]);
+  res.json({ ...status, providers: providers.map((p) => ({ slug: p.slug, name: p.name })) });
+});
+
+/** Send a sample alert email to the configured recipients. */
+adminRouter.post("/alerts/test", async (req, res) => {
+  const r = await sendTestAlert();
+  await audit(req, "alerts.test", "settings", "-", { to: r.to });
+  res.json(r);
 });
 
 // ── Support & feedback ──────────────────────────────────

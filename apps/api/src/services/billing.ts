@@ -4,6 +4,7 @@ import { Plan, Subscription, Transaction, User, type PlanLean, type Subscription
 import { withTransaction } from "../db/connect";
 import { HttpError, badRequest, notFound } from "../lib/errors";
 import { notify } from "./notify";
+import { saleAlert } from "./adminAlerts";
 import { logger } from "../lib/logger";
 
 const DAY = 24 * 3600 * 1000;
@@ -158,7 +159,8 @@ export function planPrice(plan: PlanLean, cycle: BillingCycle): number {
 }
 
 /** Buy a plan or pass from the main balance. Runs inside the caller's session if given. */
-export async function purchasePlan(args: { userId: Id; planId: Id; cycle: BillingCycle; session?: ClientSession }) {
+/** `via` is how it was paid, for the admin sale email ("Balance" or a payment method name). */
+export async function purchasePlan(args: { userId: Id; planId: Id; cycle: BillingCycle; via?: string; session?: ClientSession }) {
   const run = async (session: ClientSession) => {
     const plan = await Plan.findById(args.planId).session(session).lean();
     if (!plan || !plan.active) throw notFound("Plan not found");
@@ -225,6 +227,17 @@ export async function purchasePlan(args: { userId: Id; planId: Id; cycle: Billin
 
   const { sub, plan } = args.session ? await run(args.session) : await withTransaction(run);
   invalidateEntitlement(args.userId);
+  saleAlert({
+    userId: args.userId,
+    planName: plan.name,
+    kind: plan.kind,
+    cycle: sub.cycle,
+    priceMicros: sub.priceMicros,
+    tokens: plan.tokens,
+    rpm: plan.rpm,
+    termEndsAt: sub.termEndsAt,
+    via: args.via ?? "Balance",
+  });
   await notify(
     args.userId,
     {
@@ -407,13 +420,27 @@ async function renewOrDowngrade(subId: string) {
     const price = plan ? planPrice(plan, s.cycle as BillingCycle) : 0;
     if (s.autoRenew && plan?.active && user && user.mainBalance >= price) {
       await debitWallet({ userId: s.userId, wallet: "main", amountMicros: price, type: "plan_purchase", description: `${plan.name} plan renewal · ${s.cycle}`, session });
-      await Subscription.create([newSubscriptionDoc(s.userId, plan, s.cycle as BillingCycle, price)], { session });
-      return { renewed: true, userId: s.userId, name: plan.name, price };
+      const [next] = await Subscription.create([newSubscriptionDoc(s.userId, plan, s.cycle as BillingCycle, price)], { session });
+      return { renewed: true, userId: s.userId, name: plan.name, price, plan, sub: next };
     }
     await ensureFreeSubscription(s.userId, session);
     return { renewed: false, userId: s.userId, name: s.planName, price };
   });
   if (!outcome) return;
+  if (outcome.renewed && outcome.plan && outcome.sub) {
+    saleAlert({
+      userId: outcome.userId,
+      planName: outcome.plan.name,
+      kind: outcome.plan.kind,
+      cycle: outcome.sub.cycle,
+      priceMicros: outcome.price,
+      tokens: outcome.plan.tokens,
+      rpm: outcome.plan.rpm,
+      termEndsAt: outcome.sub.termEndsAt,
+      via: "Auto-renewal from balance",
+      renewal: true,
+    });
+  }
   await notify(
     outcome.userId,
     outcome.renewed

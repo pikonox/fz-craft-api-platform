@@ -274,7 +274,7 @@ export async function fulfillPayment(paymentId: string, receivedMicros: number, 
 
   if (payment.purpose === "plan" && payment.planId) {
     try {
-      await purchasePlan({ userId: payment.userId, planId: payment.planId, cycle: (payment.cycle as BillingCycle) ?? "monthly" });
+      await purchasePlan({ userId: payment.userId, planId: payment.planId, cycle: (payment.cycle as BillingCycle) ?? "monthly", via: PAYMENT_METHOD_LABELS[payment.method as PaymentMethodId] });
       return payment;
     } catch (err) {
       const msg = err instanceof HttpError ? err.message : "the plan couldn't be activated";
