@@ -181,7 +181,18 @@ export type UpstreamPoolStatus = {
   settings: UpstreamPoolSettings;
   provider: { id: string; name: string; slug: string } | null;
   providers: { slug: string; name: string }[];
-  tokens: { used: number; limit: number; pct: number; requests: number; windowStart: string; windowEnd: string; runsOutAt: string | null } | null;
+  /** source "live" = read from the upstream's own response headers; "estimate" = counted from our logs */
+  tokens: {
+    used: number;
+    limit: number;
+    pct: number;
+    requests: number;
+    source: "live" | "estimate";
+    updatedAt: string | null;
+    windowStart: string | null;
+    windowEnd: string | null;
+    runsOutAt: string | null;
+  } | null;
   images: { count: number; spentMicros: number; budgetMicros: number; pct: number; since: string } | null;
   sold: { tokens: number; plans: number; passes: number };
   keyProblem: { message: string; at: string; coolingDown: boolean } | null;

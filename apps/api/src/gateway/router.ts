@@ -1,6 +1,6 @@
 import { ProviderKey, type ModelLean, type ProviderLean } from "../db/models";
 import { logger } from "../lib/logger";
-import { upstreamFailed } from "../services/adminAlerts";
+import { noteUpstreamQuota, upstreamFailed } from "../services/adminAlerts";
 import { GatewayError } from "./errors";
 import { health, registry, type PoolKey } from "./registry";
 
@@ -141,6 +141,7 @@ export async function dispatch(opts: {
 
       if (res.ok) {
         markSuccess(c);
+        noteUpstreamQuota(c.provider, res.headers);
         return { res, candidate: c, attempts, clientError: false };
       }
       const text = await res.text().catch(() => "");

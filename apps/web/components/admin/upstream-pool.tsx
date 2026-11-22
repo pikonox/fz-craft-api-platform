@@ -86,7 +86,7 @@ export function UpstreamPoolCard() {
         )}
 
         <div className="grid gap-3 md:grid-cols-3">
-          <Block icon={Coins} label={`${name} plan · this period`} loading={isLoading}>
+          <Block icon={Coins} label={`${name} plan tokens`} loading={isLoading}>
             {data?.tokens ? (
               <>
                 <Big>
@@ -94,14 +94,17 @@ export function UpstreamPoolCard() {
                 </Big>
                 <Progress value={data.tokens.pct} tone={toneFor(data.tokens.pct)} className="mt-2.5" />
                 <Sub>
-                  {data.tokens.pct.toFixed(0)}% used · resets {formatDate(data.tokens.windowEnd, { day: "numeric", month: "short" })}
+                  {data.tokens.pct.toFixed(0)}% used{data.tokens.windowEnd ? ` · resets ${formatDate(data.tokens.windowEnd, { day: "numeric", month: "short" })}` : ""}
+                </Sub>
+                <Sub className="text-[11.5px]">
+                  {data.tokens.source === "live" ? `Live from ${name} · updated ${relativeTime(data.tokens.updatedAt)}` : `Our estimate from request logs`}
                 </Sub>
                 {data.tokens.runsOutAt && (
                   <Sub className="text-warning">At this pace it runs out around {formatDate(data.tokens.runsOutAt, { day: "numeric", month: "short" })}</Sub>
                 )}
               </>
             ) : (
-              <NotTracked onClick={() => setOpen(true)}>Add your {name} plan size and start date to track it.</NotTracked>
+              <NotTracked onClick={() => setOpen(true)}>Shows up after the first paid request goes to {name}. You can also enter your plan size in Settings.</NotTracked>
             )}
           </Block>
 
@@ -287,7 +290,7 @@ function PoolDialog({ open, onOpenChange, status, alerts }: { open: boolean; onO
               ))}
             </NativeSelect>
           </Field>
-          <Field label="Tokens in your plan (millions)" hint="Leave empty to stop tracking tokens." error={errors.tokens}>
+          <Field label="Tokens in your plan (millions)" hint="Only used if the provider stops reporting its tokens left (FreeModel reports them on every response)." error={errors.tokens}>
             <Input inputMode="decimal" value={f.tokensM} onChange={(e) => set("tokensM", e.target.value)} placeholder="e.g. 30" />
             <div className="mt-2 flex flex-wrap gap-1.5">
               {PRESETS.map((p) => (
@@ -306,7 +309,7 @@ function PoolDialog({ open, onOpenChange, status, alerts }: { open: boolean; onO
             </div>
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Day the plan started" hint="Find it on your upstream dashboard. Later periods roll forward by themselves.">
+            <Field label="Day the plan started" hint="Optional. Shows when it resets and predicts when it runs out. Later periods roll forward by themselves.">
               <Input type="date" value={f.periodStart} onChange={(e) => set("periodStart", e.target.value)} max={today()} />
             </Field>
             <Field label="Period length (days)" error={errors.days}>

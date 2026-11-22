@@ -105,6 +105,39 @@ async function sentSince(providerId: Types.ObjectId, since: Date) {
   return { tokens: r?.tokens ?? 0, images: r?.images ?? 0, requests: r?.requests ?? 0 };
 }
 
+// ── Live quota from the upstream's own response headers ─
+//
+// FreeModel sends `x-ratelimit-remaining-tokens` / `x-ratelimit-limit-tokens` on every response:
+// the plan's tokens left *before* that request, and the plan size. That's exact, so it beats our
+// own estimate whenever it's available.
+
+type LiveQuota = { remaining: number; limit: number; at: number };
+const liveQuota = new Map<string, LiveQuota>();
+const quotaSavedAt = new Map<string, number>();
+const QUOTA_KEY = (providerId: string) => `upstreamQuota:${providerId}`;
+/** Older readings than this are ignored (the account may have changed since). */
+const LIVE_MAX_AGE_MS = 3 * DAY;
+
+/** Called by the router on every successful upstream response. Saves at most once a minute per provider. */
+export function noteUpstreamQuota(provider: { _id: Types.ObjectId | string }, headers: Headers) {
+  const rem = headers.get("x-ratelimit-remaining-tokens");
+  const lim = headers.get("x-ratelimit-limit-tokens");
+  if (rem === null || lim === null) return;
+  const q = { remaining: Number(rem), limit: Number(lim), at: Date.now() };
+  if (!Number.isFinite(q.remaining) || !Number.isFinite(q.limit) || q.limit <= 0) return;
+  const id = String(provider._id);
+  liveQuota.set(id, q);
+  if (Date.now() - (quotaSavedAt.get(id) ?? 0) < 60_000) return;
+  quotaSavedAt.set(id, Date.now());
+  Setting.updateOne({ key: QUOTA_KEY(id) }, { $set: { value: q } }, { upsert: true }).catch(() => {});
+}
+
+async function readLiveQuota(providerId: string, now: number): Promise<LiveQuota | null> {
+  let q: LiveQuota | null = liveQuota.get(providerId) ?? null;
+  if (!q) q = ((await Setting.findOne({ key: QUOTA_KEY(providerId) }).lean())?.value as LiveQuota | undefined) ?? null;
+  return q && now - q.at < LIVE_MAX_AGE_MS ? q : null;
+}
+
 export type PoolStatus = Awaited<ReturnType<typeof poolStatus>>;
 
 export async function poolStatus(now = Date.now()) {
@@ -128,25 +161,49 @@ export async function poolStatus(now = Date.now()) {
     limit: number;
     pct: number;
     requests: number;
-    windowStart: Date;
-    windowEnd: Date;
+    /** "live" = read from the upstream's own headers; "estimate" = counted from our request logs */
+    source: "live" | "estimate";
+    /** When the live reading was taken */
+    updatedAt: Date | null;
+    /** The plan period, when its start day is set in the pool settings */
+    windowStart: Date | null;
+    windowEnd: Date | null;
     /** When the plan runs out at the current pace, if that's before the period ends */
     runsOutAt: Date | null;
   } | null = null;
-  const win = p.tokens > 0 ? currentWindow(p, now) : null;
-  if (win) {
-    const used = await sentSince(provider._id, win.start);
-    const elapsed = Math.max(HOUR, now - win.start.getTime());
-    const perMs = used.tokens / elapsed;
-    const outAt = perMs > 0 && used.tokens < p.tokens ? now + (p.tokens - used.tokens) / perMs : null;
+  const win = currentWindow(p, now);
+  const live = await readLiveQuota(String(provider._id), now);
+  const sent = win ? await sentSince(provider._id, win.start) : null;
+  const pace = (used: number, limit: number) => {
+    if (!win || used >= limit) return null;
+    const perMs = used / Math.max(HOUR, now - win.start.getTime());
+    const outAt = perMs > 0 ? now + (limit - used) / perMs : null;
+    return outAt && outAt < win.end.getTime() ? new Date(outAt) : null;
+  };
+  if (live) {
+    const used = Math.max(0, live.limit - live.remaining);
     tokens = {
-      used: used.tokens,
+      used,
+      limit: live.limit,
+      pct: (used / live.limit) * 100,
+      requests: sent?.requests ?? 0,
+      source: "live",
+      updatedAt: new Date(live.at),
+      windowStart: win?.start ?? null,
+      windowEnd: win?.end ?? null,
+      runsOutAt: pace(used, live.limit),
+    };
+  } else if (win && sent && p.tokens > 0) {
+    tokens = {
+      used: sent.tokens,
       limit: p.tokens,
-      pct: (used.tokens / p.tokens) * 100,
-      requests: used.requests,
+      pct: (sent.tokens / p.tokens) * 100,
+      requests: sent.requests,
+      source: "estimate",
+      updatedAt: null,
       windowStart: win.start,
       windowEnd: win.end,
-      runsOutAt: outAt && outAt < win.end.getTime() ? new Date(outAt) : null,
+      runsOutAt: pace(sent.tokens, p.tokens),
     };
   }
 
@@ -175,12 +232,15 @@ function poolSummaryHtml(st: PoolStatus) {
   const soldLine = `${formatTokens(st.sold.tokens)} tokens across ${st.sold.plans} plan${st.sold.plans === 1 ? "" : "s"}${st.sold.passes ? ` and ${st.sold.passes} pass${st.sold.passes === 1 ? "" : "es"}` : ""}`;
   const items: [string, string][] = [["Sold & active", soldLine]];
   if (st.tokens) {
-    items.push([`${name} plan`, `${formatTokens(st.tokens.limit)} tokens · ${formatTokens(st.tokens.used)} used (${st.tokens.pct.toFixed(0)}%)${bar(st.tokens.pct)}`]);
+    items.push([
+      `${name} plan`,
+      `${formatTokens(st.tokens.limit)} tokens · ${formatTokens(st.tokens.used)} used (${st.tokens.pct.toFixed(0)}%)${bar(st.tokens.pct)}<span style="font-size:12px;color:#71717a">${st.tokens.source === "live" ? `as reported by ${name}` : "our estimate"}</span>`,
+    ]);
     if (st.sold.tokens > st.tokens.limit) {
       items.push(["Note", `<span style="color:#fbbf24">You've sold more tokens than your ${name} plan holds. That's fine while customers don't use their full allowance; watch the usage above.</span>`]);
     }
   } else {
-    items.push([`${name} plan`, `<span style="color:#a1a1aa">Not set. Add your plan size in Admin → Overview to get usage warnings.</span>`]);
+    items.push([`${name} plan`, `<span style="color:#a1a1aa">No reading yet. It appears after the first paid request goes to ${name}.</span>`]);
   }
   parts.push(rows(items));
   return parts.join("");
@@ -246,18 +306,22 @@ export function composeTokenWarning(st: PoolStatus, level: number): AlertMessage
   return {
     subject: `${full ? "🛑" : "⚠️"} ${title}`,
     title,
-    text: `${formatTokens(t.used)} of ${formatTokens(t.limit)} tokens since ${day(t.windowStart)}. Resets ${day(t.windowEnd)}.`,
+    text: `${formatTokens(t.used)} of ${formatTokens(t.limit)} tokens used.${t.windowEnd ? ` Resets ${day(t.windowEnd)}.` : ""}`,
     html:
       `<p style="margin:0 0 8px">${
         full ? `Your paid models may start failing for customers. Upgrade or top up your ${esc(name)} plan now.` : `Upgrade your ${esc(name)} plan or keep an eye on it before it runs out.`
       }</p>` +
       rows([
         ["Used", `${formatTokens(t.used)} of ${formatTokens(t.limit)} tokens (${t.pct.toFixed(1)}%)${bar(t.pct)}`],
-        ["Period", `${esc(day(t.windowStart))} → resets ${esc(day(t.windowEnd))}`],
+        ...(t.windowStart && t.windowEnd ? ([["Period", `${esc(day(t.windowStart))} → resets ${esc(day(t.windowEnd))}`]] as [string, string][]) : []),
         ...(t.runsOutAt && !full ? ([["At this pace", `runs out around <b>${esc(day(t.runsOutAt))}</b>`]] as [string, string][]) : []),
         ["Sold & active", `${formatTokens(st.sold.tokens)} tokens across ${st.sold.plans + st.sold.passes} plans/passes`],
       ]) +
-      `<p style="margin:8px 0 0;font-size:12px;color:#71717a">Counted by ${esc(env.BRAND_NAME)} from the requests it sent to ${esc(name)}. Compare with ${esc(name)}'s own dashboard now and then.</p>`,
+      `<p style="margin:8px 0 0;font-size:12px;color:#71717a">${
+        t.source === "live"
+          ? `Reported by ${esc(name)} itself on its latest response.`
+          : `Counted by ${esc(env.BRAND_NAME)} from the requests it sent to ${esc(name)}. Compare with ${esc(name)}'s own dashboard now and then.`
+      }</p>`,
     link: "/admin",
   };
 }
@@ -279,12 +343,17 @@ export async function checkUpstreamPool() {
 
   if (st.tokens) {
     const t = st.tokens;
-    const key = `${t.windowStart.toISOString()}|${t.limit}`;
+    const key = `${t.source}|${t.windowStart?.toISOString() ?? "-"}|${t.limit}`;
     if (state.tokensKey !== key) {
       Object.assign(state, { tokensKey: key, tokensWarned: 0 });
       changed = true;
     }
     const lv = level(t.pct);
+    // The upstream plan renewed (usage fell back under the threshold): warn again next time
+    if (lv === 0 && (state.tokensWarned ?? 0) > 0) {
+      state.tokensWarned = 0;
+      changed = true;
+    }
     if (lv > (state.tokensWarned ?? 0)) {
       await alertAdmins({ topic: "upstream", type: "usage", ...composeTokenWarning(st, lv) });
       state.tokensWarned = lv;
