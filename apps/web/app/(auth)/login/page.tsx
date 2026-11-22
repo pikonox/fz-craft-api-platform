@@ -21,13 +21,21 @@ function LoginForm() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(params.get("error"));
+  // Password sign-in is for accounts made before Google-only sign-up (e.g. the admin account)
+  const withEmail = Boolean(params.get("email") || params.get("error"));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const r = await api<{ needsVerification?: boolean; requires2fa?: boolean; devCode?: string }>("/api/auth/login", { body: { email, password, totp: need2fa ? totp : undefined } });
+      const r = await api<{
+        needsVerification?: boolean;
+        requires2fa?: boolean;
+        devCode?: string;
+      }>("/api/auth/login", {
+        body: { email, password, totp: need2fa ? totp : undefined },
+      });
       if (r.needsVerification) {
         if (r.devCode) sessionStorage.setItem("devCode", r.devCode);
         router.push(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
@@ -48,50 +56,95 @@ function LoginForm() {
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">{need2fa ? "Two-factor authentication" : "Welcome back"}</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">{need2fa ? "Enter the 6-digit code from your authenticator app." : "Sign in to your dashboard."}</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        {need2fa ? "Enter the 6-digit code from your authenticator app." : "Sign in to your dashboard with your Google account."}
+      </p>
       <div className="mt-8">
         {!need2fa && <GoogleButton next={next} />}
-        {/* With JavaScript, submit() signs in. Without it (e.g. a browser extension blocks the page's scripts),
-            the browser posts the form to /api/auth/login-form, which signs in and redirects. */}
-        <form onSubmit={submit} method="post" action="/api/auth/login-form" className="space-y-4">
-          <input type="hidden" name="next" value={next} />
-          {need2fa ? (
-            <Field label="Authentication code">
-              <Input autoFocus inputMode="numeric" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="123 456" className="h-11 text-center font-mono text-lg tracking-[0.3em]" />
-            </Field>
-          ) : (
-            <>
-              <Field label="Email">
-                <Input type="email" name="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className="h-11" />
-              </Field>
-              <Field
-                label={
-                  <span className="flex justify-between">
-                    Password
-                    <Link href="/forgot-password" className="font-normal text-muted-foreground hover:text-foreground">
-                      Forgot?
-                    </Link>
-                  </span>
-                }
-              >
-                <div className="relative">
-                  <Input type={show ? "text" : "password"} name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 pr-10" />
-                  <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={show ? "Hide password" : "Show password"}>
-                    {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </button>
-                </div>
-              </Field>
-            </>
+        {/* A native <details> so the password form also opens when the page's scripts don't run */}
+        <details open={withEmail || need2fa} className="group mt-5">
+          {!need2fa && (
+            <summary className="mx-auto block w-fit cursor-pointer list-none text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline group-open:mb-5 [&::-webkit-details-marker]:hidden">
+              Have a password account? Sign in with email
+            </summary>
           )}
-          {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p>}
-          <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
-            {need2fa ? <><ShieldCheck /> Verify</> : "Sign in"}
-          </Button>
-        </form>
+          {/* With JavaScript, submit() signs in. Without it (e.g. a browser extension blocks the page's scripts),
+              the browser posts the form to /api/auth/login-form, which signs in and redirects. */}
+          <form onSubmit={submit} method="post" action="/api/auth/login-form" className="space-y-4">
+            <input type="hidden" name="next" value={next} />
+            {need2fa ? (
+              <Field label="Authentication code">
+                <Input
+                  autoFocus
+                  inputMode="numeric"
+                  value={totp}
+                  onChange={(e) => setTotp(e.target.value)}
+                  placeholder="123 456"
+                  className="h-11 text-center font-mono text-lg tracking-[0.3em]"
+                />
+              </Field>
+            ) : (
+              <>
+                <Field label="Email">
+                  <Input
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    className="h-11"
+                  />
+                </Field>
+                <Field
+                  label={
+                    <span className="flex justify-between">
+                      Password
+                      <Link href="/forgot-password" className="font-normal text-muted-foreground hover:text-foreground">
+                        Forgot?
+                      </Link>
+                    </span>
+                  }
+                >
+                  <div className="relative">
+                    <Input
+                      type={show ? "text" : "password"}
+                      name="password"
+                      autoComplete="current-password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-11 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShow((s) => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={show ? "Hide password" : "Show password"}
+                    >
+                      {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </Field>
+              </>
+            )}
+            {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p>}
+            <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
+              {need2fa ? (
+                <>
+                  <ShieldCheck /> Verify
+                </>
+              ) : (
+                "Sign in"
+              )}
+            </Button>
+          </form>
+        </details>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           New here?{" "}
           <Link href="/register" className="font-medium text-foreground hover:underline">
-            Create an account
+            Create an account with Google
           </Link>
         </p>
       </div>

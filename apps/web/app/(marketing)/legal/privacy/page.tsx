@@ -65,7 +65,7 @@ export default function PrivacyPage() {
             <strong>Account details</strong> — email address, name, and a phone number if you add one. Passwords are stored only as a salted hash (scrypt); we can never see them.
           </li>
           <li>
-            <strong>Sign-in and verification</strong> — if you use Google sign-in, your Google account ID, email and name. If you verify with Telegram, your Telegram user ID and username.
+            <strong>Sign-in and verification</strong> — new accounts sign in with Google, so we receive your Google account ID, email and name. Older accounts may also have a password, stored only as a secure hash. If you verify with Telegram, your Telegram user ID and username.
           </li>
           <li>
             <strong>Payments</strong> — the amount, method and status of each payment; Binance Pay order IDs or blockchain transaction hashes (and the public details recorded on the
@@ -146,7 +146,7 @@ export default function PrivacyPage() {
             ["AI model providers", "To generate the response for the model you choose", "Your prompts, attachments and generation settings, and the model’s output. They process it under their own terms and may keep it for a limited time for abuse monitoring."],
             ["Database hosting (MongoDB Atlas)", "Stores account, usage and billing records", "All data described in this policy"],
             ["Server hosting", "Runs the website and API, and stores uploaded and generated files", "Data in transit, server logs, and stored files (generated and reference images, chat attachments, payment screenshots)"],
-            ["Google", "Optional Google sign-in", "Sign-in request; Google returns your account ID, name and email"],
+            ["Google (Firebase Authentication)", "Sign-in with your Google account", "Sign-in request; Google returns your account ID, name and email"],
             ["Telegram", "Account verification and optional notifications", "Your Telegram ID and the messages we send you"],
             ["Email delivery provider", "Sign-in codes and service emails", "Your email address and the message content"],
             ["Binance and BNB Smart Chain", "Verifying crypto payments", "Order IDs and transaction hashes; blockchain data is public by nature"],

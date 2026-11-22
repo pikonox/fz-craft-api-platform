@@ -11,6 +11,7 @@ import { generateReferralCode, attachReferral } from "../services/referrals";
 import { onboardUser, publicUser } from "../services/users";
 import { telegramEnabled } from "../services/settings";
 import { logger } from "../lib/logger";
+import { verifyFirebaseIdToken } from "../lib/firebase";
 
 export const authRouter = Router();
 
@@ -57,12 +58,17 @@ authRouter.get("/config", (_req, res) => {
   res.json({
     brand: env.BRAND_NAME,
     googleClientId: env.GOOGLE_CLIENT_ID || null,
+    /** Sign-in is "Continue with Google" through Firebase */
+    firebase: Boolean(env.FIREBASE_PROJECT_ID),
+    /** New accounts are Google-only unless ALLOW_EMAIL_SIGNUP=1 */
+    emailSignup: env.ALLOW_EMAIL_SIGNUP,
     telegramEnabled: telegramEnabled(),
     telegramBot: env.TELEGRAM_BOT_USERNAME || null,
   });
 });
 
 authRouter.post("/register", async (req, res) => {
+  if (!env.ALLOW_EMAIL_SIGNUP) throw forbidden("New accounts are created with Google. Use “Continue with Google”.");
   throttle(`reg:${req.ip}`, 10, 15 * 60_000);
   const body = z.object({ name: z.string().trim().min(1, "Enter your name").max(80), email, password, ref: z.string().max(40).optional() }).parse(req.body);
   let user = await User.findOne({ email: body.email });
@@ -180,26 +186,22 @@ authRouter.post("/login-form", express.urlencoded({ extended: false, limit: "10k
   }
 });
 
-const googleClient = env.GOOGLE_CLIENT_ID ? new OAuth2Client(env.GOOGLE_CLIENT_ID) : null;
-
-authRouter.post("/google", async (req, res) => {
-  if (!googleClient) throw badRequest("Google sign-in is not configured");
-  const body = z.object({ credential: z.string().min(10), ref: z.string().max(40).optional() }).parse(req.body);
-  const ticket = await googleClient.verifyIdToken({ idToken: body.credential, audience: env.GOOGLE_CLIENT_ID }).catch(() => null);
-  const p = ticket?.getPayload();
-  if (!p?.email || !p.sub) throw unauthorized("Google sign-in failed");
-  if (!p.email_verified) throw unauthorized("Your Google email isn't verified");
-  let user = await User.findOne({ $or: [{ googleId: p.sub }, { email: p.email.toLowerCase() }] });
+/**
+ * Sign in (or create the account for) a verified Google identity. An existing account with the same
+ * email is linked: Google has verified that the person owns the address.
+ */
+async function signInWithGoogleAccount(req: express.Request, res: express.Response, g: { googleSub: string; email: string; name?: string | null; ref?: string }) {
+  let user = await User.findOne({ $or: [{ googleId: g.googleSub }, { email: g.email.toLowerCase() }] });
   let isNew = false;
   if (!user) {
     isNew = true;
-    user = await User.create({ email: p.email.toLowerCase(), name: p.name ?? "", googleId: p.sub, emailVerified: true, referralCode: await generateReferralCode() });
-    if (body.ref) await attachReferral(user._id, body.ref, "link").catch(() => {});
+    user = await User.create({ email: g.email.toLowerCase(), name: g.name ?? "", googleId: g.googleSub, emailVerified: true, referralCode: await generateReferralCode() });
+    if (g.ref) await attachReferral(user._id, g.ref, "link").catch((err) => logger.debug({ err: err.message }, "referral not attached"));
   } else {
     if (user.status === "banned") throw forbidden("Your account has been suspended. Contact support.");
     if (user.status === "deleted") throw unauthorized("This account was deleted");
-    if (!user.googleId) user.googleId = p.sub;
-    if (!user.name && p.name) user.name = p.name;
+    if (!user.googleId) user.googleId = g.googleSub;
+    if (!user.name && g.name) user.name = g.name;
     const wasUnverified = !user.emailVerified;
     user.emailVerified = true;
     await user.save();
@@ -207,6 +209,36 @@ authRouter.post("/google", async (req, res) => {
   }
   if (isNew) await onboardUser(user._id);
   await createSession(req, res, user._id);
+  return user;
+}
+
+/** "Continue with Google" via Firebase Auth: the browser sends the Firebase ID token. */
+authRouter.post("/firebase", async (req, res) => {
+  if (!env.FIREBASE_PROJECT_ID) throw badRequest("Google sign-in is not configured");
+  throttle(`fb:${req.ip}`, 30, 15 * 60_000);
+  const body = z.object({ idToken: z.string().min(20).max(8192), ref: z.string().max(40).optional() }).parse(req.body);
+  const id = await verifyFirebaseIdToken(body.idToken, env.FIREBASE_PROJECT_ID).catch((err) => {
+    logger.debug({ err: (err as Error).message }, "firebase token rejected");
+    return null;
+  });
+  if (!id?.email) throw unauthorized("Google sign-in failed. Please try again.");
+  if (id.provider !== "google.com" || !id.googleSub) throw unauthorized("Please use “Continue with Google”.");
+  if (!id.emailVerified) throw unauthorized("Your Google email isn't verified");
+  const user = await signInWithGoogleAccount(req, res, { googleSub: id.googleSub, email: id.email, name: id.name, ref: body.ref });
+  res.json({ user: publicUser(user.toObject() as never) });
+});
+
+const googleClient = env.GOOGLE_CLIENT_ID ? new OAuth2Client(env.GOOGLE_CLIENT_ID) : null;
+
+/** Google Identity Services credential (the older button). Kept for any client still using it. */
+authRouter.post("/google", async (req, res) => {
+  if (!googleClient) throw badRequest("Google sign-in is not configured");
+  const body = z.object({ credential: z.string().min(10), ref: z.string().max(40).optional() }).parse(req.body);
+  const ticket = await googleClient.verifyIdToken({ idToken: body.credential, audience: env.GOOGLE_CLIENT_ID }).catch(() => null);
+  const p = ticket?.getPayload();
+  if (!p?.email || !p.sub) throw unauthorized("Google sign-in failed");
+  if (!p.email_verified) throw unauthorized("Your Google email isn't verified");
+  const user = await signInWithGoogleAccount(req, res, { googleSub: p.sub, email: p.email, name: p.name, ref: body.ref });
   res.json({ user: publicUser(user.toObject() as never) });
 });
 

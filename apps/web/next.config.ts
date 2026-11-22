@@ -28,6 +28,16 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_LEGAL_COUNTRY: process.env.LEGAL_COUNTRY || "Pakistan",
     NEXT_PUBLIC_LEGAL_EMAIL: process.env.LEGAL_EMAIL || "",
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: [process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_ID].map((v) => v?.trim()).find(Boolean) ?? "",
+    // "Continue with Google" through Firebase Auth (Firebase console → Project settings → Your apps → Web app).
+    // These are public identifiers, not secrets. FIREBASE_* or NEXT_PUBLIC_FIREBASE_* both work.
+    NEXT_PUBLIC_FIREBASE_API_KEY: (process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || "").trim(),
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || "").trim(),
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: (
+      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+      process.env.FIREBASE_AUTH_DOMAIN ||
+      (process.env.FIREBASE_PROJECT_ID ? `${process.env.FIREBASE_PROJECT_ID.trim()}.firebaseapp.com` : "")
+    ).trim(),
+    NEXT_PUBLIC_FIREBASE_APP_ID: (process.env.NEXT_PUBLIC_FIREBASE_APP_ID || process.env.FIREBASE_APP_ID || "").trim(),
   },
   async rewrites() {
     // The Express server owns /api, /v1 (public API) and /files (generated images)

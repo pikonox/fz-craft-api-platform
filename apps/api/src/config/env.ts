@@ -41,6 +41,14 @@ const schema = z.object({
   ADMIN_EMAIL: z.string().email().default("admin@example.com"),
   ADMIN_PASSWORD: z.string().default("Admin@12345"),
   GOOGLE_CLIENT_ID: z.string().trim().optional().default(""),
+  /** Firebase project id (Project settings → General). Sign-in is "Continue with Google" through Firebase. */
+  FIREBASE_PROJECT_ID: z.string().trim().optional().default(""),
+  /** New accounts are Google-only. "1" re-opens email + password sign-up (handy for local testing). */
+  ALLOW_EMAIL_SIGNUP: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v === "1" || v.toLowerCase() === "true"),
   SMTP_HOST: z.string().optional().default(""),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional().default(""),
